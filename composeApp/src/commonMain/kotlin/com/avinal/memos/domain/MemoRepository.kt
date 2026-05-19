@@ -86,8 +86,9 @@ class MemoRepository(
     suspend fun createMemo(
         content: String,
         visibility: MemoVisibility = MemoVisibility.PRIVATE,
+        attachmentNames: List<String> = emptyList(),
     ): ApiResult<Memo> {
-        return when (val result = apiClient.createMemo(content, visibility.toApiString())) {
+        return when (val result = apiClient.createMemo(content, visibility.toApiString(), attachmentNames)) {
             is ApiResult.Success -> {
                 val memo = result.data.toDomain()
                 memoDao.upsert(memo.toEntity(nowMillis()))
@@ -115,6 +116,14 @@ class MemoRepository(
                 memoDao.upsert(memo.toEntity(nowMillis()))
                 ApiResult.Success(memo)
             }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+        }
+    }
+
+    suspend fun uploadAttachment(filename: String, mimeType: String, contentBase64: String): ApiResult<String> {
+        return when (val result = apiClient.uploadAttachment(filename, mimeType, contentBase64)) {
+            is ApiResult.Success -> ApiResult.Success(result.data.name)
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> result
         }

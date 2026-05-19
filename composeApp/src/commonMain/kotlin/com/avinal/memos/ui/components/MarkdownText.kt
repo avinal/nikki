@@ -24,13 +24,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,6 +101,14 @@ fun MarkdownText(
                 line.startsWith("> ") -> BlockquoteBlock(line.removePrefix("> "), subtleColor, accent)
                 line.trim() == "---" || line.trim() == "***" || line.trim() == "___" -> {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = subtleColor.copy(alpha = 0.3f))
+                }
+                line.trimStart().startsWith("|") && line.trimStart().indexOf("|", 1) > 0 -> {
+                    val tableLines = mutableListOf(line)
+                    while (lineIndex + 1 < lines.size && lines[lineIndex + 1].trimStart().startsWith("|")) {
+                        lineIndex++
+                        tableLines.add(lines[lineIndex])
+                    }
+                    TableBlock(tableLines, textColor, accent)
                 }
                 line.isBlank() -> Spacer(Modifier.height(4.dp))
                 else -> {
@@ -237,6 +249,41 @@ private fun BlockquoteBlock(text: String, subtleColor: Color, accent: Color) {
 }
 
 @Composable
+private fun TableBlock(tableLines: List<String>, textColor: Color, accent: Color) {
+    val rows = tableLines
+        .filter { !it.trim().matches(Regex("""^\|[-:|\\s]+\|$""")) }
+        .map { line ->
+            line.trim().removePrefix("|").removeSuffix("|").split("|").map { it.trim() }
+        }
+    if (rows.isEmpty()) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+    ) {
+        rows.forEachIndexed { rowIndex, cells ->
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                cells.forEach { cell ->
+                    Text(
+                        text = cell,
+                        fontSize = 13.sp,
+                        fontWeight = if (rowIndex == 0) FontWeight.SemiBold else FontWeight.Normal,
+                        color = textColor,
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                    )
+                }
+            }
+            if (rowIndex == 0) {
+                Spacer(Modifier.fillMaxWidth().height(1.dp).background(textColor.copy(alpha = 0.1f)))
+            }
+        }
+    }
+}
+
+@Composable
 private fun CodeBlock(code: String, textColor: Color) {
     val accent = LocalAccentColor.current
     val highlighted = remember(code) { highlightCode(code, textColor, accent) }
@@ -357,7 +404,7 @@ private fun parseInlineFormatting(text: String, textColor: Color, accent: Color)
 
         when {
             matchedRegex.value.startsWith("http") ->
-                withStyle(SpanStyle(color = accent)) { append(firstMatch.value) }
+                withLink(LinkAnnotation.Url(firstMatch.value, TextLinkStyles(SpanStyle(color = accent)))) { append(firstMatch.value) }
             matchedRegex.value.startsWith("***") || matchedRegex.value.startsWith("___") ->
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, color = textColor)) { append(inner) }
             matchedRegex.value.startsWith("**") || matchedRegex.value.startsWith("__") ->
@@ -368,8 +415,14 @@ private fun parseInlineFormatting(text: String, textColor: Color, accent: Color)
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = textColor)) { append(inner) }
             matchedRegex.value.startsWith("`") ->
                 withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, background = accent.copy(alpha = 0.1f), color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("[") ->
-                withStyle(SpanStyle(color = accent)) { append(inner) }
+            matchedRegex.value.startsWith("[") -> {
+                val url = if (firstMatch.groupValues.size > 2) firstMatch.groupValues[2] else ""
+                if (url.startsWith("http")) {
+                    withLink(LinkAnnotation.Url(url, TextLinkStyles(SpanStyle(color = accent)))) { append(inner) }
+                } else {
+                    withStyle(SpanStyle(color = accent)) { append(inner) }
+                }
+            }
         }
 
         remaining = remaining.substring(firstMatch.range.last + 1)

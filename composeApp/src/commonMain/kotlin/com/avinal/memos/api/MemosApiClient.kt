@@ -1,5 +1,8 @@
 package com.avinal.memos.api
 
+import com.avinal.memos.api.model.AttachmentDto
+import com.avinal.memos.api.model.AttachmentRef
+import com.avinal.memos.api.model.CreateAttachmentRequest
 import com.avinal.memos.api.model.CreateMemoRequest
 import com.avinal.memos.api.model.FieldMask
 import com.avinal.memos.api.model.ListMemosResponse
@@ -51,10 +54,15 @@ class MemosApiClient(
     suspend fun createMemo(
         content: String,
         visibility: String = "PRIVATE",
+        attachmentNames: List<String> = emptyList(),
     ): ApiResult<MemoDto> = apiCall {
         httpClient.post(url("/memos")) {
             contentType(ContentType.Application.Json)
-            setBody(CreateMemoRequest(content = content, visibility = visibility))
+            setBody(CreateMemoRequest(
+                content = content,
+                visibility = visibility,
+                attachments = attachmentNames.map { AttachmentRef(it) },
+            ))
         }.body()
     }
 
@@ -104,6 +112,32 @@ class MemosApiClient(
         if (!response.status.isSuccess()) {
             throw ApiException(response.status.value, response.bodyAsText())
         }
+    }
+
+    suspend fun uploadAttachment(
+        filename: String,
+        type: String,
+        contentBase64: String,
+    ): ApiResult<AttachmentDto> = apiCall {
+        httpClient.post(url("/attachments")) {
+            contentType(ContentType.Application.Json)
+            setBody(CreateAttachmentRequest(
+                filename = filename,
+                type = type,
+                content = contentBase64,
+            ))
+        }.body()
+    }
+
+    suspend fun listComments(memoId: String): ApiResult<ListMemosResponse> = apiCall {
+        httpClient.get(url("/memos/$memoId/comments")).body()
+    }
+
+    suspend fun createComment(memoId: String, content: String): ApiResult<MemoDto> = apiCall {
+        httpClient.post(url("/memos/$memoId/comments")) {
+            contentType(ContentType.Application.Json)
+            setBody(CreateMemoRequest(content = content))
+        }.body()
     }
 
     suspend fun deleteMemo(id: String): ApiResult<Unit> = apiCall {

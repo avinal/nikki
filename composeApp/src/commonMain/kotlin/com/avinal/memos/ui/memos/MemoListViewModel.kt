@@ -83,8 +83,8 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
         }
     }
 
-    fun createMemo(content: String, visibility: com.avinal.memos.domain.MemoVisibility) {
-        viewModelScope.launch { memoRepository.createMemo(content, visibility) }
+    fun createMemo(content: String, visibility: com.avinal.memos.domain.MemoVisibility, attachmentNames: List<String> = emptyList()) {
+        viewModelScope.launch { memoRepository.createMemo(content, visibility, attachmentNames) }
     }
 
     fun deleteMemo(id: String) {
@@ -101,6 +101,21 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
     fun updateMemo(id: String, content: String, visibility: com.avinal.memos.domain.MemoVisibility) {
         viewModelScope.launch { memoRepository.updateMemo(id, content = content, visibility = visibility) }
+    }
+
+    fun toggleTask(memoId: String, lineIndex: Int, checked: Boolean) {
+        viewModelScope.launch {
+            val memo = memoRepository.getMemo(memoId) ?: return@launch
+            val lines = memo.content.lines().toMutableList()
+            if (lineIndex !in lines.indices) return@launch
+            val line = lines[lineIndex]
+            lines[lineIndex] = if (checked) {
+                line.replaceFirst("- [ ]", "- [x]")
+            } else {
+                line.replaceFirst("- [x]", "- [ ]").replaceFirst("- [X]", "- [ ]")
+            }
+            memoRepository.updateMemo(memoId, content = lines.joinToString("\n"))
+        }
     }
 
     fun reactToMemo(memoId: String, emoji: String) {

@@ -77,6 +77,10 @@ fun MainScreen(
     val density = LocalDensity.current
 
     var dateFilter by remember { mutableStateOf<String?>(null) }
+    var tagFilter by remember { mutableStateOf<String?>(null) }
+    var searchFilter by remember { mutableStateOf<String?>(null) }
+
+    val navigateToMemosWithFilter: () -> Unit = { scope.launch { pagerState.animateScrollToPage(1) } }
 
     Column(
         modifier = Modifier
@@ -131,8 +135,16 @@ fun MainScreen(
                         deps = deps,
                         onMemoClick = onMemoClick,
                         onDateSelected = { date ->
-                            dateFilter = date
-                            scope.launch { pagerState.animateScrollToPage(1) }
+                            dateFilter = date; tagFilter = null; searchFilter = null
+                            navigateToMemosWithFilter()
+                        },
+                        onTagSelected = { tag ->
+                            tagFilter = tag; dateFilter = null; searchFilter = null
+                            navigateToMemosWithFilter()
+                        },
+                        onSearchSubmit = { query ->
+                            searchFilter = query; dateFilter = null; tagFilter = null
+                            navigateToMemosWithFilter()
                         },
                     )
                     1 -> MemoListScreen(
@@ -140,7 +152,9 @@ fun MainScreen(
                         onMemoClick = onMemoClick,
                         onCreateMemo = onCreateMemo,
                         dateFilter = dateFilter,
-                        onClearDateFilter = { dateFilter = null },
+                        tagFilter = tagFilter,
+                        searchFilter = searchFilter,
+                        onClearFilter = { dateFilter = null; tagFilter = null; searchFilter = null },
                     )
                     2 -> TaskListScreen(deps = deps, onMemoClick = onMemoClick)
                     3 -> SettingsScreen(deps = deps, onLogout = onLogout)
@@ -155,6 +169,8 @@ private fun ExplorerPage(
     deps: AppDependencies,
     onMemoClick: (String) -> Unit,
     onDateSelected: (String) -> Unit,
+    onTagSelected: (String) -> Unit,
+    onSearchSubmit: (String) -> Unit,
 ) {
     val memos by deps.memoRepository.observeMemos().collectAsState(initial = emptyList())
     val accent = LocalAccentColor.current
@@ -220,16 +236,15 @@ private fun ExplorerPage(
         }
 
         if (showSearch && searchQuery.isNotBlank()) {
-            val results = memos.filter { it.content.contains(searchQuery, ignoreCase = true) }
             Spacer(Modifier.height(8.dp))
-            Text("${results.size} results", fontSize = 12.sp, color = subtleColor)
-            results.take(10).forEach { memo ->
-                val snippet = memo.content.lines().first().take(60)
-                Text(
-                    snippet, fontSize = 14.sp, color = textColor, maxLines = 1,
-                    modifier = Modifier.fillMaxWidth().clickable { onMemoClick(memo.id) }.padding(vertical = 6.dp),
-                )
-            }
+            Text(
+                "search for \"$searchQuery\"",
+                fontSize = 14.sp, color = accent,
+                modifier = Modifier.clickable {
+                    onSearchSubmit(searchQuery)
+                    showSearch = false
+                }.padding(vertical = 6.dp),
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -331,7 +346,10 @@ private fun ExplorerPage(
             Spacer(Modifier.height(8.dp))
             allTags.forEach { tag ->
                 val count = memos.count { it.tags.contains(tag) }
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { onTagSelected(tag) }.padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
                     Text("#$tag", fontSize = 14.sp, color = accent)
                     Text("$count", fontSize = 12.sp, color = subtleColor)
                 }

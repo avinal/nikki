@@ -69,6 +69,12 @@ data class ListMemosResponse(
 data class CreateMemoRequest(
     val content: String,
     val visibility: String = "PRIVATE",
+    val attachments: List<AttachmentRef> = emptyList(),
+)
+
+@Serializable
+data class AttachmentRef(
+    val name: String,
 )
 
 @Serializable
@@ -93,4 +99,11 @@ data class FieldMask(
 @Serializable
 data class UpsertReactionRequest(
     val reaction: ReactionDto,
+)
+
+@Serializable
+data class CreateAttachmentRequest(
+    val filename: String,
+    val type: String,
+    val content: String,
 )

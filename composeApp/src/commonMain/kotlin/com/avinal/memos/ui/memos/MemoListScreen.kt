@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,33 +43,54 @@ import com.avinal.memos.AppDependencies
 import com.avinal.memos.domain.MemoVisibility
 import com.avinal.memos.ui.components.MemoCard
 import com.avinal.memos.ui.theme.LocalAccentColor
+import com.avinal.memos.util.rememberFilePicker
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.datetime.toLocalDateTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalEncodingApi::class)
 @Composable
 fun MemoListScreen(
     deps: AppDependencies,
     onMemoClick: (String) -> Unit,
     onCreateMemo: () -> Unit,
     dateFilter: String? = null,
-    onClearDateFilter: (() -> Unit)? = null,
+    tagFilter: String? = null,
+    searchFilter: String? = null,
+    onClearFilter: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel { MemoListViewModel(deps.memoRepository) }
     val allMemos by viewModel.memos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    val memos = remember(allMemos, dateFilter) {
-        if (dateFilter == null) allMemos
-        else {
-            val parts = dateFilter.split("-")
-            if (parts.size == 3) {
-                val (year, month, day) = parts.map { it.toIntOrNull() ?: 0 }
-                allMemos.filter { memo ->
-                    val local = memo.displayTime.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                    local.year == year && (local.month.ordinal + 1) == month && local.day == day
-                }
-            } else allMemos
+    val hasFilter = dateFilter != null || tagFilter != null || searchFilter != null
+    val filterLabel = when {
+        dateFilter != null -> "date: $dateFilter"
+        tagFilter != null -> "tag: #$tagFilter"
+        searchFilter != null -> "search: $searchFilter"
+        else -> ""
+    }
+
+    val memos = remember(allMemos, dateFilter, tagFilter, searchFilter) {
+        when {
+            dateFilter != null -> {
+                val parts = dateFilter.split("-")
+                if (parts.size == 3) {
+                    val (year, month, day) = parts.map { it.toIntOrNull() ?: 0 }
+                    allMemos.filter { memo ->
+                        val local = memo.displayTime.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                        local.year == year && (local.month.ordinal + 1) == month && local.day == day
+                    }
+                } else allMemos
+            }
+            tagFilter != null -> allMemos.filter { it.tags.contains(tagFilter) }
+            searchFilter != null -> {
+                val q = searchFilter.lowercase()
+                allMemos.filter { it.content.lowercase().contains(q) || it.tags.any { t -> t.lowercase().contains(q) } }
+            }
+            else -> allMemos
         }
     }
     val listState = rememberLazyListState()
@@ -80,6 +102,23 @@ fun MemoListScreen(
     var composeText by remember { mutableStateOf("") }
     var composeVisibility by remember { mutableStateOf(MemoVisibility.PRIVATE) }
     var showVisibilityPicker by remember { mutableStateOf(false) }
+    var uploadedAttachmentNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isUploading by remember { mutableStateOf(false) }
+    val uploadScope = rememberCoroutineScope()
+
+    val launchFilePicker = rememberFilePicker { pickedFile ->
+        isUploading = true
+        uploadScope.launch {
+            val base64 = Base64.encode(pickedFile.bytes)
+            when (val result = deps.memoRepository.uploadAttachment(pickedFile.name, pickedFile.mimeType, base64)) {
+                is com.avinal.memos.api.ApiResult.Success -> {
+                    uploadedAttachmentNames = uploadedAttachmentNames + result.data
+                }
+                else -> {}
+            }
+            isUploading = false
+        }
+    }
 
     val reachedEnd by remember {
         derivedStateOf {
@@ -117,18 +156,18 @@ fun MemoListScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (dateFilter != null) {
+        if (hasFilter) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("memos from $dateFilter", fontSize = 13.sp, color = accent)
+                Text(filterLabel, fontSize = 13.sp, color = accent)
                 Text(
                     "clear",
                     fontSize = 13.sp,
                     color = subtleColor,
-                    modifier = Modifier.clickable { onClearDateFilter?.invoke() }.padding(4.dp),
+                    modifier = Modifier.clickable { onClearFilter?.invoke() }.padding(4.dp),
                 )
             }
             Spacer(Modifier.fillMaxWidth().height(1.dp).padding(start = 24.dp).background(subtleColor.copy(alpha = 0.15f)))
@@ -162,7 +201,7 @@ fun MemoListScreen(
                                                 when (item) {
                                                     "code block" -> composeText += "\n```\n\n```"
                                                     "link memo" -> composeText += "\n[memo]()"
-                                                    else -> { /* TODO: file picker */ }
+                                                    "media", "file" -> launchFilePicker()
                                                 }
                                             }
                                             .padding(vertical = 10.dp),
@@ -195,6 +234,17 @@ fun MemoListScreen(
                         ),
                     )
 
+                    if (uploadedAttachmentNames.isNotEmpty()) {
+                        Text(
+                            "${uploadedAttachmentNames.size} attachment(s) ready",
+                            fontSize = 12.sp, color = accent,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    if (isUploading) {
+                        Text("uploading...", fontSize = 12.sp, color = subtleColor, modifier = Modifier.padding(top = 4.dp))
+                    }
+
                     Spacer(Modifier.height(6.dp))
 
                     Row(
@@ -226,8 +276,9 @@ fun MemoListScreen(
                             modifier = Modifier
                                 .then(
                                     if (composeText.isNotBlank()) Modifier.clickable {
-                                        viewModel.createMemo(composeText, composeVisibility)
+                                        viewModel.createMemo(composeText, composeVisibility, uploadedAttachmentNames)
                                         composeText = ""
+                                        uploadedAttachmentNames = emptyList()
                                     } else Modifier
                                 )
                                 .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -262,6 +313,7 @@ fun MemoListScreen(
                         viewModel.updateMemo(memo.id, content, visibility)
                     },
                     onReact = { emoji -> viewModel.reactToMemo(memo.id, emoji) },
+                    onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(memo.id, lineIndex, checked) },
                 )
             }
         }
