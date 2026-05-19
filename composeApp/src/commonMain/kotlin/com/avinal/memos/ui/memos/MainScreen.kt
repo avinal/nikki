@@ -341,17 +341,31 @@ private fun ExplorerPage(
         }
 
         if (allTags.isNotEmpty()) {
+            val tasksByTag = remember(memos) {
+                val parser = com.avinal.memos.parser.TaskParser
+                val allTasks = memos.flatMap { memo -> parser.extractTasks(memo.id, memo.content) }
+                allTasks.filter { !it.isCompleted }.groupBy { it.lists.firstOrNull() ?: "" }
+            }
+
             Spacer(Modifier.height(20.dp))
             Text("tags", fontSize = 19.sp, fontWeight = FontWeight.Light, color = textColor)
             Spacer(Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                Text("tag", fontSize = 11.sp, color = subtleColor.copy(alpha = 0.5f), modifier = Modifier.weight(1f))
+                Text("memos", fontSize = 11.sp, color = subtleColor.copy(alpha = 0.5f), modifier = Modifier.width(50.dp), textAlign = TextAlign.End)
+                Text("tasks", fontSize = 11.sp, color = subtleColor.copy(alpha = 0.5f), modifier = Modifier.width(50.dp), textAlign = TextAlign.End)
+            }
+
             allTags.forEach { tag ->
-                val count = memos.count { it.tags.contains(tag) }
+                val memoCount = memos.count { it.tags.contains(tag) }
+                val taskCount = tasksByTag[tag]?.size ?: 0
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable { onTagSelected(tag) }.padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().clickable { onTagSelected(tag) }.padding(vertical = 5.dp),
                 ) {
-                    Text("#$tag", fontSize = 14.sp, color = accent)
-                    Text("$count", fontSize = 12.sp, color = subtleColor)
+                    Text("#$tag", fontSize = 14.sp, color = accent, modifier = Modifier.weight(1f))
+                    Text("$memoCount", fontSize = 13.sp, color = subtleColor, modifier = Modifier.width(50.dp), textAlign = TextAlign.End)
+                    Text("$taskCount", fontSize = 13.sp, color = if (taskCount > 0) accent else subtleColor, modifier = Modifier.width(50.dp), textAlign = TextAlign.End)
                 }
             }
         }

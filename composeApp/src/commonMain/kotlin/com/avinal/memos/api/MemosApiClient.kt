@@ -4,13 +4,11 @@ import com.avinal.memos.api.model.AttachmentDto
 import com.avinal.memos.api.model.AttachmentRef
 import com.avinal.memos.api.model.CreateAttachmentRequest
 import com.avinal.memos.api.model.CreateMemoRequest
-import com.avinal.memos.api.model.FieldMask
 import com.avinal.memos.api.model.ListMemosResponse
 import com.avinal.memos.api.model.MemoDto
 import com.avinal.memos.api.model.ReactionDto
 import com.avinal.memos.api.model.UpsertReactionRequest
 import com.avinal.memos.api.model.UpdateMemoBody
-import com.avinal.memos.api.model.UpdateMemoRequest
 import com.avinal.memos.api.model.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

@@ -20,6 +20,7 @@ data class Memo(
     val snippet: String,
     val attachments: List<Attachment> = emptyList(),
     val reactions: List<Reaction> = emptyList(),
+    val commentCount: Int = 0,
 )
 
 data class Attachment(

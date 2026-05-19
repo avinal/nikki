@@ -54,9 +54,15 @@ data class ReactionDto(
 
 @Serializable
 data class RelationDto(
-    val memo: String = "",
-    val relatedMemo: String = "",
+    val memo: RelationRefDto = RelationRefDto(),
+    val relatedMemo: RelationRefDto = RelationRefDto(),
     val type: String = "",
+)
+
+@Serializable
+data class RelationRefDto(
+    val name: String = "",
+    val snippet: String = "",
 )
 
 @Serializable

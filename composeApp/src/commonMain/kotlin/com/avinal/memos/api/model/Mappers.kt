@@ -27,6 +27,7 @@ fun MemoDto.toDomain(): Memo = Memo(
     snippet = snippet,
     attachments = attachments.map { it.toDomain() },
     reactions = reactions.map { it.toDomain() },
+    commentCount = relations.count { it.type == "COMMENT" && it.relatedMemo.name == name },
 )
 
 fun AttachmentDto.toDomain(): Attachment = Attachment(

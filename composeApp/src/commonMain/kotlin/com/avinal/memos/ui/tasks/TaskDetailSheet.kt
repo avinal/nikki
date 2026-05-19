@@ -1,5 +1,7 @@
 package com.avinal.memos.ui.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,33 +11,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.avinal.memos.domain.Task
 import com.avinal.memos.parser.TaskParser
-import com.avinal.memos.ui.theme.DuePurple
-import com.avinal.memos.ui.theme.PriorityP1
-import com.avinal.memos.ui.theme.PriorityP2
-import com.avinal.memos.ui.theme.PriorityP3
+import com.avinal.memos.ui.theme.LocalAccentColor
 import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TaskDetailSheet(
     task: Task,
@@ -43,83 +37,88 @@ fun TaskDetailSheet(
     onUpdate: (Task, String) -> Unit,
     onOpenMemo: (String) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val accent = LocalAccentColor.current
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    ModalBottomSheet(
+    AlertDialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        ) {
-            Text(
-                text = task.text,
-                style = MaterialTheme.typography.titleMedium,
-            )
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = null,
+        text = {
+            Column {
+                Text(task.text, fontSize = 17.sp, fontWeight = FontWeight.Medium, color = textColor)
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
 
-            Text("Due Date", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                val dateOptions = listOf(
-                    "Today" to today,
-                    "Tomorrow" to today.plus(1, DateTimeUnit.DAY),
-                    "Next week" to today.plus(7, DateTimeUnit.DAY),
-                    "No date" to null,
+                Text("due date", fontSize = 13.sp, color = subtleColor)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                    listOf(
+                        "today" to today,
+                        "tomorrow" to today.plus(1, DateTimeUnit.DAY),
+                        "next week" to today.plus(7, DateTimeUnit.DAY),
+                        "no date" to null,
+                    ).forEach { (label, date) ->
+                        val isSelected = task.dueDate == date
+                        Text(
+                            label,
+                            fontSize = 14.sp,
+                            color = if (isSelected) accent else textColor,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier
+                                .background(
+                                    if (isSelected) accent.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(4.dp),
+                                )
+                                .clickable { onUpdate(task, TaskParser.reconstructLine(task.copy(dueDate = date))) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Text("priority", fontSize = 13.sp, color = subtleColor)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(null to "none", 1 to "p1", 2 to "p2", 3 to "p3").forEach { (p, label) ->
+                        val isSelected = task.priority == p
+                        Text(
+                            label,
+                            fontSize = 14.sp,
+                            color = if (isSelected) accent else textColor,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier
+                                .background(
+                                    if (isSelected) accent.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(4.dp),
+                                )
+                                .clickable { onUpdate(task, TaskParser.reconstructLine(task.copy(priority = p))) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+
+                if (task.labels.isNotEmpty() || task.lists.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        task.labels.forEach { Text("@$it", fontSize = 13.sp, color = subtleColor) }
+                        task.lists.forEach { Text("#$it", fontSize = 13.sp, color = accent) }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    "open in memo",
+                    fontSize = 15.sp,
+                    color = accent,
+                    modifier = Modifier.clickable { onOpenMemo(task.memoId) }.padding(vertical = 6.dp),
                 )
-                dateOptions.forEach { (label, date) ->
-                    FilterChip(
-                        selected = task.dueDate == date,
-                        onClick = {
-                            val updated = task.copy(dueDate = date)
-                            onUpdate(task, TaskParser.reconstructLine(updated))
-                        },
-                        label = { Text(label) },
-                    )
-                }
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            Text("Priority", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val priorityOptions = listOf(null to "None", 1 to "P1", 2 to "P2", 3 to "P3")
-                priorityOptions.forEach { (p, label) ->
-                    FilterChip(
-                        selected = task.priority == p,
-                        onClick = {
-                            val updated = task.copy(priority = p)
-                            onUpdate(task, TaskParser.reconstructLine(updated))
-                        },
-                        label = { Text(label) },
-                    )
-                }
-            }
-
-            if (task.labels.isNotEmpty() || task.lists.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    task.labels.forEach { label ->
-                        Text("@$label", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    task.lists.forEach { list ->
-                        Text("#$list", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
-
-            TextButton(onClick = { onOpenMemo(task.memoId) }) {
-                Text("Open in memo")
-            }
-
-            Spacer(Modifier.height(16.dp))
-        }
-    }
+        },
+        confirmButton = {},
+    )
 }

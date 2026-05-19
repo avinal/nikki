@@ -22,3 +22,6 @@ local.properties
 /kotlin-js-store
 .kotlin/
 composeApp/schemas/
+index.html
+script.js
+styles.css

@@ -48,6 +48,7 @@ fun MemoEntity.toDomain(): Memo = Memo(
     snippet = snippet,
     attachments = deserializeAttachments(attachmentsJson),
     reactions = deserializeReactions(reactionsJson),
+    commentCount = commentCount,
 )
 
 fun Memo.toEntity(cachedAt: Long): MemoEntity = MemoEntity(
@@ -68,6 +69,7 @@ fun Memo.toEntity(cachedAt: Long): MemoEntity = MemoEntity(
     snippet = snippet,
     attachmentsJson = serializeAttachments(attachments),
     reactionsJson = serializeReactions(reactions),
+    commentCount = commentCount,
     cachedAt = cachedAt,
 )
 

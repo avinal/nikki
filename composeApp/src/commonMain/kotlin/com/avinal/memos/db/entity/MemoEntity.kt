@@ -22,5 +22,6 @@ data class MemoEntity(
     val snippet: String,
     val attachmentsJson: String = "[]",
     val reactionsJson: String = "[]",
+    val commentCount: Int = 0,
     val cachedAt: Long,
 )

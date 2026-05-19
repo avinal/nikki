@@ -125,6 +125,10 @@ fun MemoCard(
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(formatAbsoluteDate(memo.displayTime), fontSize = 12.sp, color = subtleColor)
+                if (memo.commentCount > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("${memo.commentCount} comment${if (memo.commentCount > 1) "s" else ""}", fontSize = 12.sp, color = subtleColor)
+                }
             }
 
             Spacer(Modifier.height(8.dp))
