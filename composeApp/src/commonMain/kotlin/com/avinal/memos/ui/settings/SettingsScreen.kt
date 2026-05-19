@@ -1,0 +1,159 @@
+package com.avinal.memos.ui.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.avinal.memos.AppDependencies
+import com.avinal.memos.ui.theme.LocalAccentColor
+import com.avinal.memos.ui.theme.MetroTheme
+import com.avinal.memos.ui.theme.WpAccentColors
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SettingsScreen(
+    deps: AppDependencies,
+    onLogout: () -> Unit,
+) {
+    val viewModel = viewModel { SettingsViewModel(deps.authRepository, deps.tokenStore, deps.memoRepository) }
+    val serverUrl by viewModel.serverUrl.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val currentTheme by viewModel.currentTheme.collectAsState()
+    val currentAccent by viewModel.currentAccent.collectAsState()
+    val accent = LocalAccentColor.current
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("sign out?") },
+            confirmButton = {
+                TextButton(onClick = { showLogoutDialog = false; viewModel.logout(); onLogout() }) {
+                    Text("sign out", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) { Text("cancel") }
+            },
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 24.dp),
+    ) {
+        SectionHeader("account")
+        SettingsItem("server", serverUrl ?: "not connected")
+        currentUser?.let { user ->
+            SettingsItem("username", user.username)
+            if (user.nickname.isNotEmpty()) SettingsItem("name", user.nickname)
+        }
+
+        Spacer(Modifier.height(24.dp))
+        SectionHeader("accent color")
+        Spacer(Modifier.height(8.dp))
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            WpAccentColors.forEach { ac ->
+                val isSelected = ac.name == currentAccent
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(ac.color)
+                        .then(
+                            if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                            else Modifier
+                        )
+                        .clickable { viewModel.setAccentColor(ac.name) },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+        SectionHeader("theme")
+        Spacer(Modifier.height(8.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetroTheme.entries.forEach { theme ->
+                val isSelected = currentTheme == theme.label
+                Text(
+                    text = theme.label,
+                    fontSize = 15.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { viewModel.setTheme(theme) },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(36.dp))
+        SectionHeader("about")
+        SettingsItem("version", "1.0.0")
+
+        Spacer(Modifier.height(36.dp))
+
+        Text(
+            "sign out",
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.clickable { showLogoutDialog = true },
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Light,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
+}
+
+@Composable
+private fun SettingsItem(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+    }
+}
