@@ -20,7 +20,6 @@ class AuthRepository(
     val isLoggedIn: Flow<Boolean> = tokenStore.accessToken.map { it != null }
 
     suspend fun login(serverUrl: String, token: String): ApiResult<User> {
-        val originalBaseUrl = apiClient.baseUrlProvider
         val tempClient = MemosApiClient(
             httpClient = com.avinal.memos.api.HttpClientFactory.create { token },
             baseUrlProvider = { serverUrl },
