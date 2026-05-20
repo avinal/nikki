@@ -52,19 +52,28 @@ class MemoRepository(
     suspend fun refreshMemos(): ApiResult<List<Memo>> {
         nextPageToken = ""
         hasMorePages = true
-        return when (val result = apiClient.listMemos(pageSize = 50)) {
-            is ApiResult.Success -> {
-                val memos = result.data.memos.map { it.toDomain() }
-                val now = nowMillis()
-                lastFetchTime = now
-                memoDao.upsertAll(memos.map { it.toEntity(now) })
-                nextPageToken = result.data.nextPageToken
-                hasMorePages = nextPageToken.isNotEmpty()
-                ApiResult.Success(memos)
+        val allFetched = mutableListOf<Memo>()
+
+        var token = ""
+        do {
+            val result = apiClient.listMemos(pageSize = 50, pageToken = token)
+            when (result) {
+                is ApiResult.Success -> {
+                    allFetched.addAll(result.data.memos.map { it.toDomain() })
+                    token = result.data.nextPageToken
+                }
+                is ApiResult.Error -> return result
+                is ApiResult.NetworkError -> return result
             }
-            is ApiResult.Error -> result
-            is ApiResult.NetworkError -> result
-        }
+        } while (token.isNotEmpty())
+
+        val now = nowMillis()
+        lastFetchTime = now
+        memoDao.deleteAll()
+        memoDao.upsertAll(allFetched.map { it.toEntity(now) })
+        nextPageToken = ""
+        hasMorePages = false
+        return ApiResult.Success(allFetched)
     }
 
     suspend fun loadNextPage(): ApiResult<List<Memo>> {

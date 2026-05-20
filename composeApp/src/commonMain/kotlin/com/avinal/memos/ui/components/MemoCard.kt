@@ -75,7 +75,7 @@ fun MemoCard(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("delete memo?", color = textColor) },
             text = { Text("this cannot be undone.", color = subtleColor) },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             confirmButton = {
                 TextButton(onClick = { showDeleteDialog = false; onDelete?.invoke() }) {
                     Text("delete", color = MaterialTheme.colorScheme.error)
@@ -90,7 +90,7 @@ fun MemoCard(
     if (showMenu) {
         AlertDialog(
             onDismissRequest = { showMenu = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = null,
             text = {
                 Column {
@@ -216,7 +216,7 @@ private fun InlineEditor(
             Text(visibility.name.lowercase(), fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable { showVisibilityMenu = true })
             if (showVisibilityMenu) {
                 AlertDialog(
-                    onDismissRequest = { showVisibilityMenu = false }, containerColor = MaterialTheme.colorScheme.surface, title = null,
+                    onDismissRequest = { showVisibilityMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, title = null,
                     text = {
                         Column {
                             MemoVisibility.entries.forEach { vis ->

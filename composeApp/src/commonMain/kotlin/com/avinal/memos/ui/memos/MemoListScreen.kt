@@ -134,7 +134,7 @@ fun MemoListScreen(
     if (showVisibilityPicker) {
         AlertDialog(
             onDismissRequest = { showVisibilityPicker = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = null,
             text = {
                 Column {
@@ -188,7 +188,7 @@ fun MemoListScreen(
                 if (showInsertMenu) {
                     AlertDialog(
                         onDismissRequest = { showInsertMenu = false },
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         title = null,
                         text = {
                             Column {

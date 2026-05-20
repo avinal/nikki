@@ -43,7 +43,7 @@ fun TaskDetailSheet(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = null,
         text = {
             Column {

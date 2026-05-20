@@ -84,17 +84,19 @@ fun metroColorScheme(theme: MetroTheme, accent: Color): ColorScheme = when (them
     MetroTheme.AMOLED -> darkColorScheme(
         background = Color.Black,
         onBackground = Color.White,
-        surface = Color.Black,
+        surface = Color(0xFF161616),
         onSurface = Color.White,
-        surfaceVariant = Color(0xFF111111),
+        surfaceVariant = Color(0xFF1A1A1A),
         onSurfaceVariant = Color(0xFF999999),
+        surfaceContainer = Color(0xFF1E1E1E),
+        surfaceContainerHigh = Color(0xFF222222),
         primary = accent,
         onPrimary = Color.White,
         secondary = Color(0xFF1A1A1A),
         onSecondary = Color(0xFFCCCCCC),
         error = Color(0xFFE51400),
         onError = Color.White,
-        outline = Color(0xFF555555),
+        outline = Color(0xFF444444),
         outlineVariant = Color(0xFF333333),
     )
 }
