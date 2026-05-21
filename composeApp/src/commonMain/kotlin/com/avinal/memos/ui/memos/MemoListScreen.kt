@@ -216,7 +216,18 @@ fun MemoListScreen(
                 Column(modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
                     TextField(
                         value = composeText,
-                        onValueChange = { composeText = it },
+                        onValueChange = { newText ->
+                            // Auto-checklist: if user pressed enter after a task line, auto-insert "- [ ] "
+                            if (newText.length > composeText.length && newText.endsWith("\n")) {
+                                val beforeNewline = newText.dropLast(1)
+                                val lastLine = beforeNewline.lines().lastOrNull() ?: ""
+                                if (lastLine.trimStart().startsWith("- [")) {
+                                    composeText = newText + "- [ ] "
+                                    return@TextField
+                                }
+                            }
+                            composeText = newText
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text("any thoughts...", fontSize = 15.sp, color = subtleColor.copy(alpha = 0.4f))
@@ -233,6 +244,48 @@ fun MemoListScreen(
                             cursorColor = accent,
                         ),
                     )
+
+                    // Live metadata preview
+                    val previewChips = remember(composeText) {
+                        val parser = com.avinal.memos.parser.TaskParser
+                        val tasks = parser.extractTasks("preview", composeText)
+                        if (tasks.isEmpty()) emptyList()
+                        else tasks.flatMap { task ->
+                            buildList {
+                                task.dueDate?.let { add("due: $it" to accent) }
+                                task.dueTime?.let { add("at: $it" to accent) }
+                                task.reminder?.let { add("!$it" to accent) }
+                                task.priority?.let {
+                                    val color = when (it) {
+                                        1 -> com.avinal.memos.ui.theme.PriorityP1
+                                        2 -> com.avinal.memos.ui.theme.PriorityP2
+                                        else -> com.avinal.memos.ui.theme.PriorityP3
+                                    }
+                                    add("p$it" to color)
+                                }
+                                task.lists.forEach { add("#$it" to accent) }
+                            }
+                        }.distinct()
+                    }
+
+                    if (previewChips.isNotEmpty()) {
+                        androidx.compose.foundation.layout.FlowRow(
+                            modifier = Modifier.padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            previewChips.forEach { (label, color) ->
+                                Text(
+                                    label,
+                                    fontSize = 11.sp,
+                                    color = color,
+                                    modifier = Modifier
+                                        .background(color.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
 
                     if (uploadedAttachmentNames.isNotEmpty()) {
                         Text(

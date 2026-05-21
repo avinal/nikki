@@ -36,6 +36,15 @@ class SettingsViewModel(
     val notificationsEnabled: StateFlow<Boolean> = tokenStore.notificationsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val defaultVisibility: StateFlow<String> = tokenStore.defaultVisibility
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "PRIVATE")
+
+    val defaultReminder: StateFlow<String> = tokenStore.defaultReminder
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    val weekStartDay: StateFlow<Int> = tokenStore.weekStartDay
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     init {
         viewModelScope.launch { authRepository.validateToken() }
     }
@@ -50,6 +59,18 @@ class SettingsViewModel(
 
     fun setNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch { tokenStore.saveNotificationsEnabled(enabled) }
+    }
+
+    fun setDefaultVisibility(vis: String) {
+        viewModelScope.launch { tokenStore.saveDefaultVisibility(vis) }
+    }
+
+    fun setDefaultReminder(reminder: String) {
+        viewModelScope.launch { tokenStore.saveDefaultReminder(reminder) }
+    }
+
+    fun setWeekStartDay(day: Int) {
+        viewModelScope.launch { tokenStore.saveWeekStartDay(day) }
     }
 
     fun getExportJson(onResult: (String) -> Unit) {

@@ -53,8 +53,22 @@ class TaskCheckWorker(
             allTasks.forEach { task ->
                 if (task.isCompleted || task.dueDate == null || task.id in scheduledIds) return@forEach
 
+                // Schedule reminder as duration before due
+                if (task.reminder != null) {
+                    val dueInstant = task.dueDate.atTime(task.dueTime ?: LocalTime(8, 0)).toInstant(tz)
+                    val offsetMs = when (task.reminder.unit) {
+                        com.avinal.memos.domain.ReminderUnit.MIN -> task.reminder.value * 60_000L
+                        com.avinal.memos.domain.ReminderUnit.HR -> task.reminder.value * 3_600_000L
+                        com.avinal.memos.domain.ReminderUnit.DAY -> task.reminder.value * 86_400_000L
+                        com.avinal.memos.domain.ReminderUnit.WEEK -> task.reminder.value * 604_800_000L
+                    }
+                    val reminderMs = dueInstant.toEpochMilliseconds() - offsetMs
+                    if (reminderMs > nowMillis) {
+                        scheduleAlarm(alarmManager, "${task.id}_remind", task.text, "reminder: ${task.reminder}", reminderMs)
+                    }
+                }
+
                 if (task.dueTime != null) {
-                    // Specific time: schedule one alarm at that exact time
                     val alarmInstant = task.dueDate.atTime(task.dueTime).toInstant(tz)
                     val alarmMs = alarmInstant.toEpochMilliseconds()
                     if (alarmMs > nowMillis) {
@@ -62,7 +76,6 @@ class TaskCheckWorker(
                         newScheduledIds.add(task.id)
                     }
                 } else {
-                    // No specific time: schedule at 8am and 8pm on the due date
                     val morning = task.dueDate.atTime(LocalTime(8, 0)).toInstant(tz).toEpochMilliseconds()
                     val evening = task.dueDate.atTime(LocalTime(20, 0)).toInstant(tz).toEpochMilliseconds()
 

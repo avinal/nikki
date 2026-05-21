@@ -3,6 +3,17 @@ package com.avinal.memos.domain
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
+data class ReminderDuration(
+    val value: Int,
+    val unit: ReminderUnit,
+) {
+    override fun toString(): String = "$value${unit.suffix}"
+}
+
+enum class ReminderUnit(val suffix: String) {
+    MIN("min"), HR("hr"), DAY("day"), WEEK("week");
+}
+
 data class Task(
     val id: String,
     val memoId: String,
@@ -13,7 +24,7 @@ data class Task(
     val isCompleted: Boolean,
     val dueDate: LocalDate? = null,
     val dueTime: LocalTime? = null,
+    val reminder: ReminderDuration? = null,
     val priority: Int? = null,
-    val labels: List<String> = emptyList(),
     val lists: List<String> = emptyList(),
 )

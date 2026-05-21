@@ -1,5 +1,7 @@
 package com.avinal.memos.parser
 
+import com.avinal.memos.domain.ReminderDuration
+import com.avinal.memos.domain.ReminderUnit
 import com.avinal.memos.domain.Task
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
@@ -12,15 +14,18 @@ import kotlinx.datetime.todayIn
 object TaskParser {
 
     private val taskLineRegex = Regex("""^\s*- \[([ xX])]\s+(.*)$""")
-    private val dateRegex = Regex("""\d{4}-\d{2}-\d{2}""")
-    private val priorityRegex = Regex("""\bp([1-3])\b""")
-    private val labelRegex = Regex("""(?<!\w)@(\w+)""")
-    private val listRegex = Regex("""(?<!\w)#(\w+)""")
-    // Time patterns: @14:30, @2:30pm, @5pm, @17:00
-    private val time24Regex = Regex("""(?<!\d)(\d{1,2}):(\d{2})(?!\d)""")
-    private val time12Regex = Regex("""(?<!\w)(\d{1,2})(?::(\d{2}))?\s*(am|pm)""", RegexOption.IGNORE_CASE)
 
-    private val dateKeywords = setOf("today", "tomorrow", "yesterday")
+    private val isoDateRegex = Regex("""\b(\d{4}-\d{2}-\d{2})\b""")
+    private val naturalDateRegex = Regex("""\b(today|tomorrow|yesterday)\b""", RegexOption.IGNORE_CASE)
+
+    private val time12Regex = Regex("""\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b""", RegexOption.IGNORE_CASE)
+    private val time24Regex = Regex("""\b(\d{1,2}):(\d{2})\b""")
+
+    // Reminder duration: !30min, !1hr, !2day, !1week
+    private val reminderRegex = Regex("""!(\d+)\s*(min|hr|day|week)s?\b""", RegexOption.IGNORE_CASE)
+
+    private val priorityRegex = Regex("""\bp([1-3])\b""")
+    private val listRegex = Regex("""(?<!\w)#([a-zA-Z]\w*)""")
 
     fun extractTasks(memoId: String, content: String): List<Task> {
         var taskOrdinal = 0
@@ -31,10 +36,8 @@ object TaskParser {
             val cleanText = cleanTaskText(rawText)
             taskOrdinal++
 
-            val stableId = "${memoId}:${hashTaskContent(cleanText, taskOrdinal)}"
-
             Task(
-                id = stableId,
+                id = "${memoId}:${hashContent(cleanText, taskOrdinal)}",
                 memoId = memoId,
                 lineIndex = index,
                 text = cleanText,
@@ -43,8 +46,8 @@ object TaskParser {
                 isCompleted = completed,
                 dueDate = parseDueDate(rawText),
                 dueTime = parseDueTime(rawText),
+                reminder = parseReminder(rawText),
                 priority = parsePriority(rawText),
-                labels = parseLabels(rawText),
                 lists = parseLists(rawText),
             )
         }
@@ -52,10 +55,10 @@ object TaskParser {
 
     fun toggleTaskInContent(content: String, task: Task): String {
         val lines = content.lines().toMutableList()
-        val targetIndex = findTaskLine(lines, task)
-        if (targetIndex < 0) return content
-        val line = lines[targetIndex]
-        lines[targetIndex] = if (task.isCompleted) {
+        val idx = findTaskLine(lines, task)
+        if (idx < 0) return content
+        val line = lines[idx]
+        lines[idx] = if (task.isCompleted) {
             line.replaceFirst("- [x]", "- [ ]").replaceFirst("- [X]", "- [ ]")
         } else {
             line.replaceFirst("- [ ]", "- [x]")
@@ -65,10 +68,21 @@ object TaskParser {
 
     fun replaceTaskLineInContent(content: String, task: Task, newLine: String): String {
         val lines = content.lines().toMutableList()
-        val targetIndex = findTaskLine(lines, task)
-        if (targetIndex < 0) return content
-        lines[targetIndex] = newLine
+        val idx = findTaskLine(lines, task)
+        if (idx < 0) return content
+        lines[idx] = newLine
         return lines.joinToString("\n")
+    }
+
+    fun reconstructLine(task: Task): String {
+        val checkbox = if (task.isCompleted) "- [x]" else "- [ ]"
+        val parts = mutableListOf(task.text)
+        task.dueDate?.let { parts.add(it.toString()) }
+        task.dueTime?.let { parts.add(formatTime(it)) }
+        task.reminder?.let { parts.add("!$it") }
+        task.priority?.let { parts.add("p$it") }
+        task.lists.forEach { parts.add("#$it") }
+        return "$checkbox ${parts.joinToString(" ")}"
     }
 
     private fun findTaskLine(lines: List<String>, task: Task): Int {
@@ -78,104 +92,91 @@ object TaskParser {
         return lines.indexOfFirst { it.trim() == task.originalLine.trim() }
     }
 
-    fun reconstructLine(task: Task): String {
-        val checkbox = if (task.isCompleted) "- [x]" else "- [ ]"
-        val parts = mutableListOf(task.text)
-        task.dueDate?.let { parts.add(it.toString()) }
-        task.dueTime?.let { parts.add(formatTime(it)) }
-        task.priority?.let { parts.add("p$it") }
-        task.labels.forEach { parts.add("@$it") }
-        task.lists.forEach { parts.add("#$it") }
-        return "$checkbox ${parts.joinToString(" ")}"
-    }
-
     private fun formatTime(time: LocalTime): String {
-        val hour = time.hour
-        val minute = time.minute
+        val h = time.hour; val m = time.minute
         return when {
-            minute == 0 && hour <= 12 -> "${if (hour == 0) 12 else hour}${if (hour < 12) "am" else "pm"}"
-            minute == 0 && hour > 12 -> "${hour - 12}pm"
-            else -> "${hour}:${minute.toString().padStart(2, '0')}"
+            m == 0 && h == 0 -> "12am"
+            m == 0 && h < 12 -> "${h}am"
+            m == 0 && h == 12 -> "12pm"
+            m == 0 -> "${h - 12}pm"
+            else -> "${h}:${m.toString().padStart(2, '0')}"
         }
     }
 
-    private fun hashTaskContent(cleanText: String, ordinal: Int): String {
-        val input = "$cleanText#$ordinal"
+    private fun hashContent(text: String, ordinal: Int): String {
         var hash = 0L
-        for (c in input) {
-            hash = hash * 31 + c.code
-        }
+        for (c in "$text#$ordinal") hash = hash * 31 + c.code
         return hash.toULong().toString(36)
     }
 
     private fun parseDueDate(text: String): LocalDate? {
-        val dateMatch = dateRegex.find(text)
-        if (dateMatch != null) {
-            return try { LocalDate.parse(dateMatch.value) } catch (_: Exception) { null }
+        isoDateRegex.find(text)?.let {
+            return try { LocalDate.parse(it.groupValues[1]) } catch (_: Exception) { null }
         }
-
-        val labels = labelRegex.findAll(text)
-        for (label in labels) {
-            val word = label.groupValues[1].lowercase()
+        naturalDateRegex.find(text)?.let {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            when (word) {
-                "today" -> return today
-                "tomorrow" -> return today.plus(1, DateTimeUnit.DAY)
-                "yesterday" -> return today.plus(-1, DateTimeUnit.DAY)
+            return when (it.groupValues[1].lowercase()) {
+                "today" -> today
+                "tomorrow" -> today.plus(1, DateTimeUnit.DAY)
+                "yesterday" -> today.plus(-1, DateTimeUnit.DAY)
+                else -> null
             }
         }
         return null
     }
 
     private fun parseDueTime(text: String): LocalTime? {
-        // Check 12-hour format first: 5pm, 2:30pm, 11am
-        val match12 = time12Regex.find(text)
-        if (match12 != null) {
-            var hour = match12.groupValues[1].toIntOrNull() ?: return null
-            val minute = match12.groupValues[2].toIntOrNull() ?: 0
-            val ampm = match12.groupValues[3].lowercase()
-            if (hour !in 1..12 || minute !in 0..59) return null
-            if (ampm == "pm" && hour != 12) hour += 12
-            if (ampm == "am" && hour == 12) hour = 0
-            return LocalTime(hour, minute)
+        val cleaned = text.replace(reminderRegex, "")
+        time12Regex.find(cleaned)?.let { m ->
+            var h = m.groupValues[1].toIntOrNull() ?: return null
+            val min = m.groupValues[2].toIntOrNull() ?: 0
+            val ampm = m.groupValues[3].lowercase()
+            if (h !in 1..12 || min !in 0..59) return null
+            if (ampm == "pm" && h != 12) h += 12
+            if (ampm == "am" && h == 12) h = 0
+            return LocalTime(h, min)
         }
-
-        // Check 24-hour format: 14:30, 9:00
-        val match24 = time24Regex.find(text)
-        if (match24 != null) {
-            val hour = match24.groupValues[1].toIntOrNull() ?: return null
-            val minute = match24.groupValues[2].toIntOrNull() ?: return null
-            if (hour !in 0..23 || minute !in 0..59) return null
-            return LocalTime(hour, minute)
+        time24Regex.find(cleaned)?.let { m ->
+            val h = m.groupValues[1].toIntOrNull() ?: return null
+            val min = m.groupValues[2].toIntOrNull() ?: return null
+            if (h !in 0..23 || min !in 0..59) return null
+            val start = m.range.first
+            if (start >= 4 && cleaned.substring(start - 4, start).matches(Regex("""\d{4}"""))) return null
+            return LocalTime(h, min)
         }
-
         return null
     }
 
-    private fun parsePriority(text: String): Int? {
-        val match = priorityRegex.find(text) ?: return null
-        return match.groupValues[1].toIntOrNull()
+    private fun parseReminder(text: String): ReminderDuration? {
+        reminderRegex.find(text)?.let { m ->
+            val value = m.groupValues[1].toIntOrNull() ?: return null
+            if (value <= 0) return null
+            val unit = when (m.groupValues[2].lowercase()) {
+                "min" -> ReminderUnit.MIN
+                "hr" -> ReminderUnit.HR
+                "day" -> ReminderUnit.DAY
+                "week" -> ReminderUnit.WEEK
+                else -> return null
+            }
+            return ReminderDuration(value, unit)
+        }
+        return null
     }
 
-    private fun parseLabels(text: String): List<String> =
-        labelRegex.findAll(text)
-            .map { it.groupValues[1] }
-            .filter { it.lowercase() !in dateKeywords }
-            .toList()
+    private fun parsePriority(text: String): Int? =
+        priorityRegex.find(text)?.groupValues?.get(1)?.toIntOrNull()
 
     private fun parseLists(text: String): List<String> =
-        listRegex.findAll(text)
-            .map { it.groupValues[1] }
-            .filter { it.first().isLetter() }
-            .toList()
+        listRegex.findAll(text).map { it.groupValues[1] }.toList()
 
     private fun cleanTaskText(text: String): String {
         var clean = text
         clean = priorityRegex.replace(clean, "")
-        clean = dateRegex.replace(clean, "")
+        clean = isoDateRegex.replace(clean, "")
+        clean = naturalDateRegex.replace(clean, "")
+        clean = reminderRegex.replace(clean, "")
         clean = time12Regex.replace(clean, "")
         clean = time24Regex.replace(clean, "")
-        clean = labelRegex.replace(clean, "")
         clean = listRegex.replace(clean, "")
         return clean.trim().replace(Regex("""\s{2,}"""), " ")
     }

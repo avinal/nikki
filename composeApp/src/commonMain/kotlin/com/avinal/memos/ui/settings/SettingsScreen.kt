@@ -125,6 +125,29 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(24.dp))
+        SectionHeader("memos")
+        Spacer(Modifier.height(6.dp))
+
+        val defaultVis by viewModel.defaultVisibility.collectAsState()
+        SettingToggle("default visibility", defaultVis.lowercase(), accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+            val next = when (defaultVis) { "PRIVATE" -> "PROTECTED"; "PROTECTED" -> "PUBLIC"; else -> "PRIVATE" }
+            viewModel.setDefaultVisibility(next)
+        }
+
+        val defaultReminder by viewModel.defaultReminder.collectAsState()
+        SettingToggle("default reminder", defaultReminder.ifEmpty { "none" }, accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+            val options = listOf("", "15min", "30min", "1hr", "1day")
+            val idx = options.indexOf(defaultReminder)
+            viewModel.setDefaultReminder(options[(idx + 1) % options.size])
+        }
+
+        val weekStart by viewModel.weekStartDay.collectAsState()
+        val dayNames = listOf("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
+        SettingToggle("week starts on", dayNames[weekStart], accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+            viewModel.setWeekStartDay((weekStart + 1) % 7)
+        }
+
+        Spacer(Modifier.height(24.dp))
         SectionHeader("notifications")
         Spacer(Modifier.height(6.dp))
 
@@ -207,5 +230,17 @@ private fun SettingsItem(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+    }
+}
+
+@Composable
+private fun SettingToggle(label: String, value: String, accent: androidx.compose.ui.graphics.Color, subtleColor: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = accent)
     }
 }

@@ -236,12 +236,13 @@ private fun MetroTaskRow(
                         val isOverdue = date < today
                         add(formatRelativeDate(date, today) to if (isOverdue) OverdueRed else accent)
                     }
+                    task.dueTime?.let { add("${it.hour.toString().padStart(2,'0')}:${it.minute.toString().padStart(2,'0')}" to accent) }
+                    task.reminder?.let { add("!$it" to subtleColor) }
                     task.priority?.let { p ->
                         val color = when (p) { 1 -> PriorityP1; 2 -> PriorityP2; else -> PriorityP3 }
                         add("p$p" to color)
                     }
                     task.lists.forEach { add("#$it" to accent) }
-                    task.labels.forEach { add("@$it" to subtleColor) }
                 }
 
                 if (metadata.isNotEmpty()) {
