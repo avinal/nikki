@@ -19,6 +19,11 @@ object HttpClientFactory {
                     encodeDefaults = true
                 })
             }
+            install(io.ktor.client.plugins.HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 30_000
+            }
         }
 
         client.plugin(HttpSend).intercept { request ->

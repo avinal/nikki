@@ -39,8 +39,11 @@ class AppDependencies(
     val authRepository: AuthRepository by lazy { AuthRepository(apiClient, tokenStore) }
     val memoRepository: MemoRepository by lazy { MemoRepository(apiClient, database.memoDao()) }
 
+    private var initJob: kotlinx.coroutines.Job? = null
+
     fun initialize() {
-        CoroutineScope(Dispatchers.IO).launch {
+        initJob?.cancel()
+        initJob = CoroutineScope(Dispatchers.IO).launch {
             launch { tokenStore.accessToken.collect { cachedToken = it } }
             launch { tokenStore.serverUrl.collect { cachedServerUrl = it } }
         }

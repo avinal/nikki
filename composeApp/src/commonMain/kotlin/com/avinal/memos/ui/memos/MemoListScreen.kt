@@ -100,7 +100,10 @@ fun MemoListScreen(
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     var composeText by remember { mutableStateOf("") }
-    var composeVisibility by remember { mutableStateOf(MemoVisibility.PRIVATE) }
+    val defaultVis by produceState(MemoVisibility.PRIVATE) {
+        deps.tokenStore.defaultVisibility.first().let { value = MemoVisibility.fromApiString(it) }
+    }
+    var composeVisibility by remember(defaultVis) { mutableStateOf(defaultVis) }
     var showVisibilityPicker by remember { mutableStateOf(false) }
     var uploadedAttachmentNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var isUploading by remember { mutableStateOf(false) }

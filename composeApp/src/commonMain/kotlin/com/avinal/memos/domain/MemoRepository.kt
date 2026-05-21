@@ -141,7 +141,13 @@ class MemoRepository(
     suspend fun reactToMemo(memoId: String, emoji: String): ApiResult<Unit> {
         return when (apiClient.upsertReaction(memoId, emoji)) {
             is ApiResult.Success -> {
-                refreshMemos()
+                when (val memoResult = apiClient.getMemo(memoId)) {
+                    is ApiResult.Success -> {
+                        val memo = memoResult.data.toDomain()
+                        memoDao.upsert(memo.toEntity(nowMillis()))
+                    }
+                    else -> {}
+                }
                 ApiResult.Success(Unit)
             }
             is ApiResult.Error -> ApiResult.Error(0, "Failed to react")

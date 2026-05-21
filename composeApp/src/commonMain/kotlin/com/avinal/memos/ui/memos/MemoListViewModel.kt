@@ -106,15 +106,10 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
     fun toggleTask(memoId: String, lineIndex: Int, checked: Boolean) {
         viewModelScope.launch {
             val memo = memoRepository.getMemo(memoId) ?: return@launch
-            val lines = memo.content.lines().toMutableList()
-            if (lineIndex !in lines.indices) return@launch
-            val line = lines[lineIndex]
-            lines[lineIndex] = if (checked) {
-                line.replaceFirst("- [ ]", "- [x]")
-            } else {
-                line.replaceFirst("- [x]", "- [ ]").replaceFirst("- [X]", "- [ ]")
-            }
-            memoRepository.updateMemo(memoId, content = lines.joinToString("\n"))
+            val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, memo.content)
+            val task = tasks.find { it.lineIndex == lineIndex } ?: return@launch
+            val newContent = com.avinal.memos.parser.TaskParser.toggleTaskInContent(memo.content, task)
+            if (newContent != memo.content) memoRepository.updateMemo(memoId, content = newContent)
         }
     }
 

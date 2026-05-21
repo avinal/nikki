@@ -276,7 +276,9 @@ private fun ExplorerPage(
 
         Spacer(Modifier.height(8.dp))
 
-        val dayLabels = listOf("m", "t", "w", "t", "f", "s", "s")
+        val weekStartDay by deps.tokenStore.weekStartDay.collectAsState(initial = 0)
+        val baseDays = listOf("s", "m", "t", "w", "t", "f", "s")
+        val dayLabels = baseDays.drop(weekStartDay) + baseDays.take(weekStartDay)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             dayLabels.forEach { day ->
                 Text(day, fontSize = 11.sp, color = subtleColor.copy(alpha = 0.5f), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
@@ -284,13 +286,13 @@ private fun ExplorerPage(
         }
         Spacer(Modifier.height(4.dp))
 
-        val firstDayOfWeek = remember(calYear, calMonthIdx) {
+        val firstDayOfWeek = remember(calYear, calMonthIdx, weekStartDay) {
             val month = calMonthIdx + 1
             val y = if (month <= 2) calYear - 1 else calYear
             val m = if (month <= 2) month + 12 else month
             val h = (1 + (13 * (m + 1)) / 5 + y + y / 4 - y / 100 + y / 400) % 7
-            val mondayBased = ((h + 5) % 7)
-            if (mondayBased < 0) mondayBased + 7 else mondayBased
+            val adjusted = ((h + 6 - weekStartDay) % 7)
+            if (adjusted < 0) adjusted + 7 else adjusted
         }
 
         val cells = buildList {

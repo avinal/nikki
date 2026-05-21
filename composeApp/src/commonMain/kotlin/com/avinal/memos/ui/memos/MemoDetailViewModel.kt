@@ -37,18 +37,11 @@ class MemoDetailViewModel(
 
     fun toggleTask(lineIndex: Int, checked: Boolean) {
         val current = memo.value ?: return
-        val lines = current.content.lines().toMutableList()
-        if (lineIndex !in lines.indices) return
-
-        val line = lines[lineIndex]
-        lines[lineIndex] = if (checked) {
-            line.replaceFirst("- [ ]", "- [x]")
-        } else {
-            line.replaceFirst("- [x]", "- [ ]").replaceFirst("- [X]", "- [ ]")
-        }
-
+        val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, current.content)
+        val task = tasks.find { it.lineIndex == lineIndex } ?: return
         viewModelScope.launch {
-            memoRepository.updateMemo(memoId, content = lines.joinToString("\n"))
+            val newContent = com.avinal.memos.parser.TaskParser.toggleTaskInContent(current.content, task)
+            if (newContent != current.content) memoRepository.updateMemo(memoId, content = newContent)
         }
     }
 
