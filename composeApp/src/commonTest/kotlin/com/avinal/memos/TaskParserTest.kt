@@ -230,4 +230,73 @@ class TaskParserTest {
         assertEquals(2, tasks[0].lineIndex)
         assertEquals(4, tasks[1].lineIndex)
     }
+
+    // --- Time parsing tests ---
+
+    @Test
+    fun parses12HourPm() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Meeting 5pm")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(17, tasks[0].dueTime!!.hour)
+        assertEquals(0, tasks[0].dueTime!!.minute)
+    }
+
+    @Test
+    fun parses12HourAm() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Standup 9am")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(9, tasks[0].dueTime!!.hour)
+    }
+
+    @Test
+    fun parses12HourWithMinutes() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Call 2:30pm")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(14, tasks[0].dueTime!!.hour)
+        assertEquals(30, tasks[0].dueTime!!.minute)
+    }
+
+    @Test
+    fun parses24Hour() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Deploy 14:30")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(14, tasks[0].dueTime!!.hour)
+        assertEquals(30, tasks[0].dueTime!!.minute)
+    }
+
+    @Test
+    fun parsesMidnight12am() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Reset 12am")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(0, tasks[0].dueTime!!.hour)
+    }
+
+    @Test
+    fun parsesNoon12pm() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Lunch 12pm")
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(12, tasks[0].dueTime!!.hour)
+    }
+
+    @Test
+    fun noTimeReturnsNull() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Simple task")
+        assertNull(tasks[0].dueTime)
+    }
+
+    @Test
+    fun timeAndDateTogether() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Review @today 3pm p1 #work")
+        assertNotNull(tasks[0].dueDate)
+        assertNotNull(tasks[0].dueTime)
+        assertEquals(15, tasks[0].dueTime!!.hour)
+        assertEquals(1, tasks[0].priority)
+    }
+
+    @Test
+    fun timeCleanedFromText() {
+        val tasks = TaskParser.extractTasks("m1", "- [ ] Meeting 5pm @today")
+        assertFalse(tasks[0].text.contains("5pm"))
+        assertFalse(tasks[0].text.contains("@today"))
+    }
 }
