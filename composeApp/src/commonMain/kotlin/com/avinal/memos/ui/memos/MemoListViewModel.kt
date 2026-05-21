@@ -122,6 +122,10 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
         }
     }
 
+    fun restoreMemo(id: String) {
+        viewModelScope.launch { memoRepository.restoreMemo(id) }
+    }
+
     fun reactToMemo(memoId: String, emoji: String) {
         viewModelScope.launch { memoRepository.reactToMemo(memoId, emoji) }
     }

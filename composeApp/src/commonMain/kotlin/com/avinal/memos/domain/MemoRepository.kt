@@ -167,6 +167,18 @@ class MemoRepository(
         }
     }
 
+    suspend fun restoreMemo(id: String): ApiResult<Memo> {
+        return when (val result = apiClient.updateMemo(id = id, state = "NORMAL")) {
+            is ApiResult.Success -> {
+                val memo = result.data.toDomain()
+                memoDao.upsert(memo.toEntity(nowMillis()))
+                ApiResult.Success(memo)
+            }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+        }
+    }
+
     suspend fun deleteMemo(id: String): ApiResult<Unit> {
         return when (val result = apiClient.deleteMemo(id)) {
             is ApiResult.Success -> {

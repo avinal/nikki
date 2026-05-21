@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.avinal.memos.AppDependencies
+import com.avinal.memos.api.ApiResult
+import com.avinal.memos.api.model.toDomain
+import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoVisibility
 import com.avinal.memos.ui.components.MemoCard
 import com.avinal.memos.ui.theme.LocalAccentColor
@@ -59,22 +62,41 @@ fun MemoListScreen(
     dateFilter: String? = null,
     tagFilter: String? = null,
     searchFilter: String? = null,
+    showArchived: Boolean = false,
     onClearFilter: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel { MemoListViewModel(deps.memoRepository) }
     val allMemos by viewModel.memos.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    val hasFilter = dateFilter != null || tagFilter != null || searchFilter != null
+    var archivedMemos by remember { mutableStateOf<List<Memo>>(emptyList()) }
+    var isLoadingArchived by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showArchived) {
+        if (showArchived) {
+            isLoadingArchived = true
+            when (val result = deps.apiClient.listArchivedMemos()) {
+                is ApiResult.Success -> {
+                    archivedMemos = result.data.memos.map { it.toDomain() }
+                }
+                else -> {}
+            }
+            isLoadingArchived = false
+        }
+    }
+
+    val hasFilter = dateFilter != null || tagFilter != null || searchFilter != null || showArchived
     val filterLabel = when {
+        showArchived -> "archived memos"
         dateFilter != null -> "date: $dateFilter"
         tagFilter != null -> "tag: #$tagFilter"
         searchFilter != null -> "search: $searchFilter"
         else -> ""
     }
 
-    val memos = remember(allMemos, dateFilter, tagFilter, searchFilter) {
+    val memos = remember(allMemos, dateFilter, tagFilter, searchFilter, showArchived, archivedMemos) {
         when {
+            showArchived -> archivedMemos
             dateFilter != null -> {
                 val parts = dateFilter.split("-")
                 if (parts.size == 3) {
@@ -114,7 +136,7 @@ fun MemoListScreen(
         uploadScope.launch {
             val base64 = Base64.encode(pickedFile.bytes)
             when (val result = deps.memoRepository.uploadAttachment(pickedFile.name, pickedFile.mimeType, base64)) {
-                is com.avinal.memos.api.ApiResult.Success -> {
+                is ApiResult.Success -> {
                     uploadedAttachmentNames = uploadedAttachmentNames + result.data
                 }
                 else -> {}
@@ -185,6 +207,7 @@ fun MemoListScreen(
             state = listState,
             modifier = Modifier.fillMaxSize(),
         ) {
+            if (!showArchived) {
             item(key = "compose") {
                 var showInsertMenu by remember { mutableStateOf(false) }
 
@@ -348,8 +371,15 @@ fun MemoListScreen(
                         .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 )
             }
+            }
 
-            if (uiState.isInitialLoading && memos.isEmpty()) {
+            if (showArchived && isLoadingArchived) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
+                    }
+                }
+            } else if (uiState.isInitialLoading && memos.isEmpty() && !showArchived) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
@@ -358,7 +388,7 @@ fun MemoListScreen(
             } else if (memos.isEmpty() && !uiState.isRefreshing) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        Text("no memos yet", fontSize = 15.sp, color = subtleColor)
+                        Text(if (showArchived) "no archived memos" else "no memos yet", fontSize = 15.sp, color = subtleColor)
                     }
                 }
             }
@@ -373,19 +403,37 @@ fun MemoListScreen(
             }
 
             items(memos, key = { it.id }) { memo ->
-                MemoCard(
-                    memo = memo,
-                    onClick = { onMemoClick(memo.id) },
-                    serverUrl = serverUrl,
-                    onPin = { viewModel.togglePin(memo) },
-                    onArchive = { viewModel.archiveMemo(memo.id) },
-                    onDelete = { viewModel.deleteMemo(memo.id) },
-                    onSave = { content, visibility ->
-                        viewModel.updateMemo(memo.id, content, visibility)
-                    },
-                    onReact = { emoji -> viewModel.reactToMemo(memo.id, emoji) },
-                    onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(memo.id, lineIndex, checked) },
-                )
+                if (showArchived) {
+                    MemoCard(
+                        memo = memo,
+                        onClick = { onMemoClick(memo.id) },
+                        serverUrl = serverUrl,
+                        onPin = null,
+                        onArchive = null,
+                        onDelete = { viewModel.deleteMemo(memo.id) },
+                        onSave = null,
+                        onReact = null,
+                        onTaskToggle = null,
+                        onRestore = {
+                            viewModel.restoreMemo(memo.id)
+                            archivedMemos = archivedMemos.filter { it.id != memo.id }
+                        },
+                    )
+                } else {
+                    MemoCard(
+                        memo = memo,
+                        onClick = { onMemoClick(memo.id) },
+                        serverUrl = serverUrl,
+                        onPin = { viewModel.togglePin(memo) },
+                        onArchive = { viewModel.archiveMemo(memo.id) },
+                        onDelete = { viewModel.deleteMemo(memo.id) },
+                        onSave = { content, visibility ->
+                            viewModel.updateMemo(memo.id, content, visibility)
+                        },
+                        onReact = { emoji -> viewModel.reactToMemo(memo.id, emoji) },
+                        onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(memo.id, lineIndex, checked) },
+                    )
+                }
             }
         }
         }

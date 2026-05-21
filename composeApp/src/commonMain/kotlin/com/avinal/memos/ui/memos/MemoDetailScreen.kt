@@ -192,9 +192,18 @@ private fun CommentsSection(
         } else {
             comments.forEach { comment ->
                 Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(comment.creator, fontSize = 12.sp, color = subtleColor)
-                        Text(formatDateTime(comment.createTime), fontSize = 12.sp, color = subtleColor)
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(comment.creator, fontSize = 12.sp, color = subtleColor)
+                            Text(formatDateTime(comment.createTime), fontSize = 12.sp, color = subtleColor)
+                        }
+                        Text("delete", fontSize = 12.sp, color = subtleColor.copy(alpha = 0.5f),
+                            modifier = Modifier.clickable {
+                                scope.launch {
+                                    deps.apiClient.deleteMemo(comment.id)
+                                    comments = comments.filter { it.id != comment.id }
+                                }
+                            })
                     }
                     Spacer(Modifier.height(2.dp))
                     MarkdownText(markdown = comment.content)

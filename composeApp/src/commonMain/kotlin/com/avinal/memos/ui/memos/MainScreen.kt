@@ -79,6 +79,7 @@ fun MainScreen(
     var dateFilter by remember { mutableStateOf<String?>(null) }
     var tagFilter by remember { mutableStateOf<String?>(null) }
     var searchFilter by remember { mutableStateOf<String?>(null) }
+    var showArchived by remember { mutableStateOf(false) }
 
     val navigateToMemosWithFilter: () -> Unit = { scope.launch { pagerState.animateScrollToPage(1) } }
 
@@ -135,15 +136,19 @@ fun MainScreen(
                         deps = deps,
                         onMemoClick = onMemoClick,
                         onDateSelected = { date ->
-                            dateFilter = date; tagFilter = null; searchFilter = null
+                            dateFilter = date; tagFilter = null; searchFilter = null; showArchived = false
                             navigateToMemosWithFilter()
                         },
                         onTagSelected = { tag ->
-                            tagFilter = tag; dateFilter = null; searchFilter = null
+                            tagFilter = tag; dateFilter = null; searchFilter = null; showArchived = false
                             navigateToMemosWithFilter()
                         },
                         onSearchSubmit = { query ->
-                            searchFilter = query; dateFilter = null; tagFilter = null
+                            searchFilter = query; dateFilter = null; tagFilter = null; showArchived = false
+                            navigateToMemosWithFilter()
+                        },
+                        onShowArchived = {
+                            showArchived = true; dateFilter = null; tagFilter = null; searchFilter = null
                             navigateToMemosWithFilter()
                         },
                     )
@@ -154,7 +159,8 @@ fun MainScreen(
                         dateFilter = dateFilter,
                         tagFilter = tagFilter,
                         searchFilter = searchFilter,
-                        onClearFilter = { dateFilter = null; tagFilter = null; searchFilter = null },
+                        showArchived = showArchived,
+                        onClearFilter = { dateFilter = null; tagFilter = null; searchFilter = null; showArchived = false },
                     )
                     2 -> TaskListScreen(deps = deps, onMemoClick = onMemoClick)
                     3 -> SettingsScreen(deps = deps, onLogout = onLogout)
@@ -171,6 +177,7 @@ private fun ExplorerPage(
     onDateSelected: (String) -> Unit,
     onTagSelected: (String) -> Unit,
     onSearchSubmit: (String) -> Unit,
+    onShowArchived: () -> Unit,
 ) {
     val memos by deps.memoRepository.observeMemos().collectAsState(initial = emptyList())
     val accent = LocalAccentColor.current
@@ -252,7 +259,7 @@ private fun ExplorerPage(
             "view archived memos",
             fontSize = 14.sp,
             color = accent,
-            modifier = Modifier.clickable { /* navigate to archived */ }.padding(vertical = 4.dp),
+            modifier = Modifier.clickable { onShowArchived() }.padding(vertical = 4.dp),
         )
 
         Spacer(Modifier.height(16.dp))

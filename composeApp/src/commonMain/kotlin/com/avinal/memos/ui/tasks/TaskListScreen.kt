@@ -125,7 +125,7 @@ fun TaskListScreen(
                         Spacer(Modifier.width(6.dp))
                         Icon(
                             if (group.collapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = null,
+                            contentDescription = if (group.collapsed) "Expand" else "Collapse",
                             modifier = Modifier.size(18.dp),
                             tint = subtleColor,
                         )

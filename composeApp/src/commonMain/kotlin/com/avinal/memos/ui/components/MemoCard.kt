@@ -56,6 +56,7 @@ fun MemoCard(
     onSave: ((String, MemoVisibility) -> Unit)? = null,
     onReact: ((String) -> Unit)? = null,
     onTaskToggle: ((Int, Boolean) -> Unit)? = null,
+    onRestore: (() -> Unit)? = null,
 ) {
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -94,15 +95,23 @@ fun MemoCard(
             title = null,
             text = {
                 Column {
-                    MetroMenuItem(if (memo.pinned) "unpin" else "pin", textColor) { showMenu = false; onPin?.invoke() }
-                    MetroMenuItem("edit", textColor) {
-                        showMenu = false; editContent = memo.content; editVisibility = memo.visibility; isEditing = true
+                    if (onRestore != null) {
+                        MetroMenuItem("restore", textColor) { showMenu = false; onRestore.invoke() }
+                        MetroMenuItem("copy content", textColor) { showMenu = false; clipboardManager.setText(AnnotatedString(memo.content)) }
+                        MetroMenuItem("share", textColor) { showMenu = false; sharePlainText(memo.content) }
+                        Spacer(Modifier.height(8.dp))
+                        MetroMenuItem("delete", MaterialTheme.colorScheme.error) { showMenu = false; showDeleteDialog = true }
+                    } else {
+                        MetroMenuItem(if (memo.pinned) "unpin" else "pin", textColor) { showMenu = false; onPin?.invoke() }
+                        MetroMenuItem("edit", textColor) {
+                            showMenu = false; editContent = memo.content; editVisibility = memo.visibility; isEditing = true
+                        }
+                        MetroMenuItem("copy content", textColor) { showMenu = false; clipboardManager.setText(AnnotatedString(memo.content)) }
+                        MetroMenuItem("share", textColor) { showMenu = false; sharePlainText(memo.content) }
+                        MetroMenuItem("archive", textColor) { showMenu = false; onArchive?.invoke() }
+                        Spacer(Modifier.height(8.dp))
+                        MetroMenuItem("delete", MaterialTheme.colorScheme.error) { showMenu = false; showDeleteDialog = true }
                     }
-                    MetroMenuItem("copy content", textColor) { showMenu = false; clipboardManager.setText(AnnotatedString(memo.content)) }
-                    MetroMenuItem("share", textColor) { showMenu = false; sharePlainText(memo.content) }
-                    MetroMenuItem("archive", textColor) { showMenu = false; onArchive?.invoke() }
-                    Spacer(Modifier.height(8.dp))
-                    MetroMenuItem("delete", MaterialTheme.colorScheme.error) { showMenu = false; showDeleteDialog = true }
                 }
             },
             confirmButton = {},
