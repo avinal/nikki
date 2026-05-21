@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,6 +23,7 @@ data class MemoListUiState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val error: String? = null,
+    val isInitialLoading: Boolean = true,
 )
 
 class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel() {
@@ -31,6 +33,13 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     private var searchJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            memoRepository.observeMemos().first()
+            _uiState.update { it.copy(isInitialLoading = false) }
+        }
+    }
 
     val memos: StateFlow<List<Memo>> = combine(
         memoRepository.observeMemos(),

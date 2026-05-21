@@ -247,6 +247,14 @@ private fun ExplorerPage(
             )
         }
 
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "view archived memos",
+            fontSize = 14.sp,
+            color = accent,
+            modifier = Modifier.clickable { /* navigate to archived */ }.padding(vertical = 4.dp),
+        )
+
         Spacer(Modifier.height(16.dp))
 
         Row(

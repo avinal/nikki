@@ -138,6 +138,13 @@ class MemosApiClient(
         }.body()
     }
 
+    suspend fun listArchivedMemos(): ApiResult<ListMemosResponse> = apiCall {
+        httpClient.get(url("/memos")) {
+            parameter("pageSize", 50)
+            parameter("filter", "state == \"ARCHIVED\"")
+        }.body()
+    }
+
     suspend fun deleteMemo(id: String): ApiResult<Unit> = apiCall {
         val response = httpClient.delete(url("/memos/$id"))
         if (!response.status.isSuccess()) {

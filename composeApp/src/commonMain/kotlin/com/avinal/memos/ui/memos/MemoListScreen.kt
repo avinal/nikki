@@ -349,11 +349,26 @@ fun MemoListScreen(
                 )
             }
 
-            if (memos.isEmpty() && !uiState.isRefreshing) {
+            if (uiState.isInitialLoading && memos.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
+                    }
+                }
+            } else if (memos.isEmpty() && !uiState.isRefreshing) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
                         Text("no memos yet", fontSize = 15.sp, color = subtleColor)
                     }
+                }
+            }
+
+            if (uiState.error != null) {
+                item {
+                    Text(
+                        uiState.error!!, fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+                    )
                 }
             }
 
