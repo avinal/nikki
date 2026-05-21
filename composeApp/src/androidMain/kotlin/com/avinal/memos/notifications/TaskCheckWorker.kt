@@ -13,12 +13,7 @@ import com.avinal.memos.db.entity.toDomain
 import com.avinal.memos.parser.TaskParser
 import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.todayIn
 
 class TaskCheckWorker(
     private val appContext: Context,
@@ -27,11 +22,7 @@ class TaskCheckWorker(
 
     override suspend fun doWork(): Result {
         val prefs = appContext.getSharedPreferences("task_notifications", Context.MODE_PRIVATE)
-        val notificationsEnabled = prefs.getBoolean("enabled", true)
-        if (!notificationsEnabled) return Result.success()
-
         val scheduledIds = prefs.getStringSet("scheduled_ids", emptySet()) ?: emptySet()
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val nowMillis = Clock.System.now().toEpochMilliseconds()
 
         val db = Room.databaseBuilder<MemosDatabase>(
@@ -48,51 +39,26 @@ class TaskCheckWorker(
             val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content) }
             val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val tz = TimeZone.currentSystemDefault()
-            val newScheduledIds = scheduledIds.toMutableSet()
 
-            allTasks.forEach { task ->
-                if (task.isCompleted || task.dueDate == null || task.id in scheduledIds) return@forEach
-
-                // Schedule reminder as duration before due
-                if (task.reminder != null) {
-                    val dueInstant = task.dueDate.atTime(task.dueTime ?: LocalTime(8, 0)).toInstant(tz)
-                    val offsetMs = when (task.reminder.unit) {
-                        com.avinal.memos.domain.ReminderUnit.MIN -> task.reminder.value * 60_000L
-                        com.avinal.memos.domain.ReminderUnit.HR -> task.reminder.value * 3_600_000L
-                        com.avinal.memos.domain.ReminderUnit.DAY -> task.reminder.value * 86_400_000L
-                        com.avinal.memos.domain.ReminderUnit.WEEK -> task.reminder.value * 604_800_000L
-                    }
-                    val reminderMs = dueInstant.toEpochMilliseconds() - offsetMs
-                    if (reminderMs > nowMillis) {
-                        scheduleAlarm(alarmManager, "${task.id}_remind", task.text, "reminder: ${task.reminder}", reminderMs)
-                    }
-                }
-
-                if (task.dueTime != null) {
-                    val alarmInstant = task.dueDate.atTime(task.dueTime).toInstant(tz)
-                    val alarmMs = alarmInstant.toEpochMilliseconds()
-                    if (alarmMs > nowMillis) {
-                        scheduleAlarm(alarmManager, task.id, task.text, "due at ${task.dueTime}", alarmMs)
-                        newScheduledIds.add(task.id)
-                    }
-                } else {
-                    val morning = task.dueDate.atTime(LocalTime(8, 0)).toInstant(tz).toEpochMilliseconds()
-                    val evening = task.dueDate.atTime(LocalTime(20, 0)).toInstant(tz).toEpochMilliseconds()
-
-                    if (morning > nowMillis) {
-                        scheduleAlarm(alarmManager, "${task.id}_am", task.text, "due today", morning)
-                    }
-                    if (evening > nowMillis) {
-                        scheduleAlarm(alarmManager, "${task.id}_pm", task.text, "reminder: still due today", evening)
-                    }
-                    newScheduledIds.add(task.id)
-                }
+            android.util.Log.d("TaskCheckWorker", "Found ${memos.size} memos, ${allTasks.size} tasks, scheduled=${scheduledIds.size}")
+            allTasks.forEach { t ->
+                android.util.Log.d("TaskCheckWorker", "Task: ${t.text}, date=${t.dueDate}, time=${t.dueTime}, reminder=${t.reminder}, completed=${t.isCompleted}, id=${t.id}")
             }
 
-            // Clean up IDs for completed/removed tasks
+            val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, scheduledIds)
+            android.util.Log.d("TaskCheckWorker", "Computed ${alarms.size} alarms")
+
+            alarms.forEach { alarm ->
+                android.util.Log.d("TaskCheckWorker", "Scheduling: ${alarm.taskText} at ${alarm.triggerAtMillis} (${alarm.label})")
+                scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis)
+            }
+
+            val newScheduledIds = scheduledIds.toMutableSet()
+            alarms.forEach { newScheduledIds.add(it.taskId) }
+
             val activeTaskIds = allTasks.filter { !it.isCompleted }.map { it.id }.toSet()
             val cleaned = newScheduledIds.filter { id ->
-                val baseId = id.removeSuffix("_am").removeSuffix("_pm")
+                val baseId = id.removeSuffix("_am").removeSuffix("_pm").removeSuffix("_remind")
                 baseId in activeTaskIds
             }.toSet()
 

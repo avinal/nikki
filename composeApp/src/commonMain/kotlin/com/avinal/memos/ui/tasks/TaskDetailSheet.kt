@@ -92,11 +92,52 @@ fun TaskDetailSheet(
     }
 
     if (showReminderPicker) {
-        val options = listOf(ReminderDuration(15, ReminderUnit.MIN), ReminderDuration(30, ReminderUnit.MIN), ReminderDuration(1, ReminderUnit.HR), ReminderDuration(2, ReminderUnit.HR), ReminderDuration(1, ReminderUnit.DAY), ReminderDuration(2, ReminderUnit.DAY), ReminderDuration(1, ReminderUnit.WEEK))
-        AlertDialog(onDismissRequest = { showReminderPicker = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, title = null,
-            text = { Column { options.forEach { d -> Text(d.toString(), fontSize = 15.sp, color = if (currentTask.reminder == d) accent else textColor, fontWeight = if (currentTask.reminder == d) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.fillMaxWidth().clickable { doUpdate(currentTask.copy(reminder = d)); showReminderPicker = false }.padding(vertical = 8.dp))
-            }; if (currentTask.reminder != null) { Text("no reminder", fontSize = 15.sp, color = subtleColor, modifier = Modifier.fillMaxWidth().clickable { doUpdate(currentTask.copy(reminder = null)); showReminderPicker = false }.padding(vertical = 8.dp)) } } }, confirmButton = {})
+        var reminderValue by remember { mutableStateOf(currentTask.reminder?.value?.toString() ?: "30") }
+        var reminderUnit by remember { mutableStateOf(currentTask.reminder?.unit ?: ReminderUnit.MIN) }
+
+        AlertDialog(
+            onDismissRequest = { showReminderPicker = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            title = null,
+            text = {
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextField(
+                            value = reminderValue,
+                            onValueChange = { reminderValue = it.filter { c -> c.isDigit() } },
+                            modifier = Modifier.width(72.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = accent, unfocusedIndicatorColor = subtleColor.copy(alpha = 0.3f), cursorColor = accent),
+                        )
+                        ReminderUnit.entries.forEach { unit ->
+                            val sel = reminderUnit == unit
+                            Text(
+                                unit.suffix, fontSize = 14.sp,
+                                color = if (sel) accent else textColor,
+                                fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.clickable { reminderUnit = unit }.padding(horizontal = 6.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        if (currentTask.reminder != null) {
+                            Text("clear", fontSize = 14.sp, color = subtleColor, modifier = Modifier.clickable { showReminderPicker = false; doUpdate(currentTask.copy(reminder = null)) })
+                        } else {
+                            Spacer(Modifier.width(1.dp))
+                        }
+                        Text("save", fontSize = 14.sp, color = accent, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable {
+                                showReminderPicker = false
+                                val v = reminderValue.toIntOrNull()
+                                if (v != null && v > 0) doUpdate(currentTask.copy(reminder = ReminderDuration(v, reminderUnit)))
+                            })
+                    }
+                }
+            },
+            confirmButton = {},
+        )
     }
 
     if (showPriorityPicker) {

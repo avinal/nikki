@@ -165,6 +165,13 @@ fun SettingsScreen(
             )
         }
         Text("get notified when tasks are due or overdue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "check reminders now",
+            fontSize = 13.sp, color = accent,
+            modifier = Modifier.clickable {
+                com.avinal.memos.util.triggerReminderCheck()
+            }.padding(vertical = 4.dp),
+        )
 
         Spacer(Modifier.height(24.dp))
         SectionHeader("backup")
