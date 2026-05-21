@@ -12,6 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import com.avinal.memos.db.entity.toDomain
 
 class AppDependencies(
     dataStorePath: String,
@@ -37,7 +39,11 @@ class AppDependencies(
     }
 
     val authRepository: AuthRepository by lazy { AuthRepository(apiClient, tokenStore) }
-    val memoRepository: MemoRepository by lazy { MemoRepository(apiClient, database.memoDao()) }
+    val memoRepository: MemoRepository by lazy {
+        MemoRepository(apiClient, database.memoDao()) {
+            com.avinal.memos.util.triggerReminderCheck()
+        }
+    }
 
     private var initJob: kotlinx.coroutines.Job? = null
 
@@ -46,6 +52,17 @@ class AppDependencies(
         initJob = CoroutineScope(Dispatchers.IO).launch {
             launch { tokenStore.accessToken.collect { cachedToken = it } }
             launch { tokenStore.serverUrl.collect { cachedServerUrl = it } }
+            launch { tokenStore.syncInterval.collect { memoRepository.syncIntervalMinutes = it } }
+            launch { initializeLiveMemosProvider() }
         }
+    }
+
+    private suspend fun initializeLiveMemosProvider() {
+        try {
+            val dao = database.memoDao()
+            com.avinal.memos.util.setLiveMemosProvider {
+                runBlocking { dao.getAll().map { it.toDomain() } }
+            }
+        } catch (_: Exception) {}
     }
 }

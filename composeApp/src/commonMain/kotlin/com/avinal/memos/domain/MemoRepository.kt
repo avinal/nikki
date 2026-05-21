@@ -17,14 +17,16 @@ import kotlinx.coroutines.launch
 class MemoRepository(
     private val apiClient: MemosApiClient,
     private val memoDao: MemoDao,
+    private val onContentChanged: (() -> Unit)? = null,
 ) {
     private var nextPageToken: String = ""
     private var hasMorePages: Boolean = true
     private var lastFetchTime: Long = 0L
+    var syncIntervalMinutes: Int = 5
 
     private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
-    private fun isCacheStale(): Boolean = (nowMillis() - lastFetchTime) > CACHE_TTL_MS
+    private fun isCacheStale(): Boolean = (nowMillis() - lastFetchTime) > (syncIntervalMinutes * 60 * 1000L)
 
     fun observeMemos(): Flow<List<Memo>> {
         if (isCacheStale()) {
@@ -101,6 +103,7 @@ class MemoRepository(
             is ApiResult.Success -> {
                 val memo = result.data.toDomain()
                 memoDao.upsert(memo.toEntity(nowMillis()))
+                onContentChanged?.invoke()
                 ApiResult.Success(memo)
             }
             is ApiResult.Error -> result
@@ -123,6 +126,7 @@ class MemoRepository(
             is ApiResult.Success -> {
                 val memo = result.data.toDomain()
                 memoDao.upsert(memo.toEntity(nowMillis()))
+                onContentChanged?.invoke()
                 ApiResult.Success(memo)
             }
             is ApiResult.Error -> result
@@ -195,9 +199,5 @@ class MemoRepository(
         lastFetchTime = 0L
         nextPageToken = ""
         hasMorePages = true
-    }
-
-    companion object {
-        private const val CACHE_TTL_MS = 5 * 60 * 1000L
     }
 }

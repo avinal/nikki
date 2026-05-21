@@ -147,6 +147,14 @@ fun SettingsScreen(
             viewModel.setWeekStartDay((weekStart + 1) % 7)
         }
 
+        val syncInterval by viewModel.syncInterval.collectAsState()
+        SettingToggle("auto sync", "${syncInterval} min", accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+            val options = listOf(1, 2, 5, 10, 15, 30, 60)
+            val idx = options.indexOf(syncInterval)
+            viewModel.setSyncInterval(options[(idx + 1) % options.size])
+        }
+        Text("how often to fetch from server", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
         Spacer(Modifier.height(24.dp))
         SectionHeader("notifications")
         Spacer(Modifier.height(6.dp))
@@ -165,6 +173,15 @@ fun SettingsScreen(
             )
         }
         Text("get notified when tasks are due or overdue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        val defaultNotifyTime by viewModel.defaultNotifyTime.collectAsState()
+        SettingToggle("default notify time", defaultNotifyTime, accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+            val options = listOf("08:00", "09:00", "12:00", "17:00", "18:00", "20:00", "21:00")
+            val idx = options.indexOf(defaultNotifyTime)
+            viewModel.setDefaultNotifyTime(options[(idx + 1) % options.size])
+        }
+        Text("when a task has a date but no time", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
         Text(
             "check reminders now",
             fontSize = 13.sp, color = accent,

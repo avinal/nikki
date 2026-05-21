@@ -45,6 +45,12 @@ class SettingsViewModel(
     val weekStartDay: StateFlow<Int> = tokenStore.weekStartDay
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val defaultNotifyTime: StateFlow<String> = tokenStore.defaultNotifyTime
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "20:00")
+
+    val syncInterval: StateFlow<Int> = tokenStore.syncInterval
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+
     init {
         viewModelScope.launch { authRepository.validateToken() }
     }
@@ -71,6 +77,14 @@ class SettingsViewModel(
 
     fun setWeekStartDay(day: Int) {
         viewModelScope.launch { tokenStore.saveWeekStartDay(day) }
+    }
+
+    fun setDefaultNotifyTime(time: String) {
+        viewModelScope.launch { tokenStore.saveDefaultNotifyTime(time) }
+    }
+
+    fun setSyncInterval(minutes: Int) {
+        viewModelScope.launch { tokenStore.saveSyncInterval(minutes) }
     }
 
     fun getExportJson(onResult: (String) -> Unit) {

@@ -17,6 +17,8 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
     val defaultVisibility: Flow<String> = dataStore.data.map { it[KEY_DEFAULT_VIS] ?: "PRIVATE" }
     val defaultReminder: Flow<String> = dataStore.data.map { it[KEY_DEFAULT_REMINDER] ?: "" }
     val weekStartDay: Flow<Int> = dataStore.data.map { (it[KEY_WEEK_START] ?: "0").toIntOrNull() ?: 0 }
+    val defaultNotifyTime: Flow<String> = dataStore.data.map { it[KEY_DEFAULT_NOTIFY_TIME] ?: "20:00" }
+    val syncInterval: Flow<Int> = dataStore.data.map { (it[KEY_SYNC_INTERVAL] ?: "5").toIntOrNull() ?: 5 }
 
     suspend fun saveCredentials(serverUrl: String, token: String) {
         dataStore.edit { prefs ->
@@ -49,6 +51,14 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_WEEK_START] = day.toString() }
     }
 
+    suspend fun saveDefaultNotifyTime(time: String) {
+        dataStore.edit { it[KEY_DEFAULT_NOTIFY_TIME] = time }
+    }
+
+    suspend fun saveSyncInterval(minutes: Int) {
+        dataStore.edit { it[KEY_SYNC_INTERVAL] = minutes.toString() }
+    }
+
     suspend fun clear() {
         dataStore.edit {
             val theme = it[KEY_THEME]
@@ -68,5 +78,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_DEFAULT_VIS = stringPreferencesKey("default_visibility")
         private val KEY_DEFAULT_REMINDER = stringPreferencesKey("default_reminder")
         private val KEY_WEEK_START = stringPreferencesKey("week_start_day")
+        private val KEY_DEFAULT_NOTIFY_TIME = stringPreferencesKey("default_notify_time")
+        private val KEY_SYNC_INTERVAL = stringPreferencesKey("sync_interval")
     }
 }

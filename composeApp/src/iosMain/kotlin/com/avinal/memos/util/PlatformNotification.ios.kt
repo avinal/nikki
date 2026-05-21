@@ -1,5 +1,4 @@
 package com.avinal.memos.util
 
-actual fun triggerReminderCheck() {
-    // TODO: iOS notification check
-}
+actual fun triggerReminderCheck() {}
+actual fun setLiveMemosProvider(provider: () -> List<com.avinal.memos.domain.Memo>) {}

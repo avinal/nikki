@@ -28,8 +28,9 @@ class MainActivity : ComponentActivity() {
         deps.initialize()
         com.avinal.memos.util.appContext = applicationContext
 
-        TaskNotificationManager.createChannel(this)
+        TaskNotificationManager.createChannels(this)
         requestNotificationPermission()
+        requestBatteryOptimizationExemption()
         scheduleTaskChecker(applicationContext)
 
         enableEdgeToEdge()
@@ -47,6 +48,18 @@ class MainActivity : ComponentActivity() {
             ) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
             }
+        }
+    }
+
+    private fun requestBatteryOptimizationExemption() {
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            try {
+                startActivity(android.content.Intent(
+                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    android.net.Uri.parse("package:$packageName")
+                ))
+            } catch (_: Exception) {}
         }
     }
 }

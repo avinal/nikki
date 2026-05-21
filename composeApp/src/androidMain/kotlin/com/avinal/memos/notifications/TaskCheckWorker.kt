@@ -25,6 +25,16 @@ class TaskCheckWorker(
         val scheduledIds = prefs.getStringSet("scheduled_ids", emptySet()) ?: emptySet()
         val nowMillis = Clock.System.now().toEpochMilliseconds()
 
+        // Read default notify time from DataStore file (shared prefs fallback)
+        val notifyPrefs = appContext.getSharedPreferences("memos_prefs", Context.MODE_PRIVATE)
+        val defaultTimeStr = notifyPrefs.getString("default_notify_time", "20:00") ?: "20:00"
+        val defaultTimeParts = defaultTimeStr.split(":")
+        val defaultTime = try {
+            kotlinx.datetime.LocalTime(defaultTimeParts[0].toInt(), defaultTimeParts.getOrElse(1) { "0" }.toInt())
+        } catch (_: Exception) {
+            kotlinx.datetime.LocalTime(20, 0)
+        }
+
         val db = Room.databaseBuilder<MemosDatabase>(
             context = appContext,
             name = appContext.getDatabasePath("memos.db").absolutePath,
@@ -45,12 +55,13 @@ class TaskCheckWorker(
                 android.util.Log.d("TaskCheckWorker", "Task: ${t.text}, date=${t.dueDate}, time=${t.dueTime}, reminder=${t.reminder}, completed=${t.isCompleted}, id=${t.id}")
             }
 
-            val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, scheduledIds)
+            android.util.Log.d("TaskCheckWorker", "nowMillis=$nowMillis, tz=$tz, defaultTime=$defaultTime")
+            val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, scheduledIds, defaultTime)
             android.util.Log.d("TaskCheckWorker", "Computed ${alarms.size} alarms")
 
             alarms.forEach { alarm ->
-                android.util.Log.d("TaskCheckWorker", "Scheduling: ${alarm.taskText} at ${alarm.triggerAtMillis} (${alarm.label})")
-                scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis)
+                android.util.Log.d("TaskCheckWorker", "Scheduling: ${alarm.taskText} at ${alarm.triggerAtMillis} (${alarm.label}) p=${alarm.priority}")
+                scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
             }
 
             val newScheduledIds = scheduledIds.toMutableSet()
@@ -76,15 +87,23 @@ class TaskCheckWorker(
         taskText: String,
         dueLabel: String,
         triggerAtMillis: Long,
+        priority: Int = 0,
     ) {
-        val intent = Intent(appContext, TaskAlarmReceiver::class.java).apply {
+        val uniqueId = (alarmId + triggerAtMillis.toString()).hashCode()
+        val receiverClass = try {
+            Class.forName("com.avinal.memos.TaskReminderReceiver")
+        } catch (_: Exception) {
+            TaskAlarmReceiver::class.java
+        }
+        val intent = Intent(appContext, receiverClass).apply {
             putExtra("task_text", taskText)
             putExtra("due_label", dueLabel)
-            putExtra("notification_id", alarmId.hashCode())
+            putExtra("notification_id", uniqueId)
+            putExtra("priority", priority)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             appContext,
-            alarmId.hashCode(),
+            uniqueId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
