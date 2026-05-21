@@ -17,6 +17,8 @@ kotlin {
         compileSdk = 36
         minSdk = 26
 
+        withHostTest {}
+
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -67,6 +69,11 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.core)
         }
     }
 }

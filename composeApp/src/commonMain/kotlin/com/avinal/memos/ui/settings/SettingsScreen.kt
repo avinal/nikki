@@ -124,6 +124,58 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(Modifier.height(24.dp))
+        SectionHeader("notifications")
+        Spacer(Modifier.height(6.dp))
+
+        val notificationsOn by viewModel.notificationsEnabled.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setNotificationsEnabled(!notificationsOn) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("task reminders", fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                if (notificationsOn) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (notificationsOn) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text("get notified when tasks are due or overdue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Spacer(Modifier.height(24.dp))
+        SectionHeader("backup")
+        Spacer(Modifier.height(6.dp))
+
+        var backupStatus by remember { mutableStateOf("") }
+
+        val saveFile = com.avinal.memos.util.rememberFileSaver { success ->
+            backupStatus = if (success) "backup exported" else "export failed"
+        }
+        val loadFile = com.avinal.memos.util.rememberFileLoader { json ->
+            viewModel.importFromJson(json) { count ->
+                backupStatus = if (count >= 0) "$count memos imported" else "invalid backup file"
+            }
+        }
+
+        Text(
+            "export backup",
+            fontSize = 15.sp, color = accent,
+            modifier = Modifier.clickable {
+                viewModel.getExportJson { json ->
+                    saveFile("memos-backup.json", json)
+                }
+            }.padding(vertical = 6.dp),
+        )
+        Text(
+            "import backup",
+            fontSize = 15.sp, color = accent,
+            modifier = Modifier.clickable { loadFile() }.padding(vertical = 6.dp),
+        )
+        if (backupStatus.isNotEmpty()) {
+            Text(backupStatus, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
+
         Spacer(Modifier.height(36.dp))
         SectionHeader("about")
         SettingsItem("version", "1.0.0")

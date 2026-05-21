@@ -13,6 +13,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
     val accessToken: Flow<String?> = dataStore.data.map { it[KEY_ACCESS_TOKEN] }
     val theme: Flow<String> = dataStore.data.map { it[KEY_THEME] ?: "DARK" }
     val accentColor: Flow<String> = dataStore.data.map { it[KEY_ACCENT] ?: "Cobalt" }
+    val notificationsEnabled: Flow<Boolean> = dataStore.data.map { (it[KEY_NOTIFICATIONS] ?: "true") == "true" }
 
     suspend fun saveCredentials(serverUrl: String, token: String) {
         dataStore.edit { prefs ->
@@ -27,6 +28,10 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun saveAccentColor(name: String) {
         dataStore.edit { it[KEY_ACCENT] = name }
+    }
+
+    suspend fun saveNotificationsEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_NOTIFICATIONS] = enabled.toString() }
     }
 
     suspend fun clear() {
@@ -44,5 +49,6 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_ACCESS_TOKEN = stringPreferencesKey("access_token")
         private val KEY_THEME = stringPreferencesKey("app_theme")
         private val KEY_ACCENT = stringPreferencesKey("accent_color")
+        private val KEY_NOTIFICATIONS = stringPreferencesKey("notifications_enabled")
     }
 }
