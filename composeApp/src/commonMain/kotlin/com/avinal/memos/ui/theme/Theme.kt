@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import com.avinal.memos.util.LocalAppDependencies
 
 @Composable
-fun MemosAppTheme(content: @Composable () -> Unit) {
+fun NikkiTheme(content: @Composable () -> Unit) {
     val deps = LocalAppDependencies.current
     val themeName by deps.tokenStore.theme.collectAsState(initial = "DARK")
     val accentName by deps.tokenStore.accentColor.collectAsState(initial = "Cobalt")

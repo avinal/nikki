@@ -215,7 +215,7 @@ fun SettingsScreen(
             fontSize = 15.sp, color = accent,
             modifier = Modifier.clickable {
                 viewModel.getExportJson { json ->
-                    saveFile("memos-backup.json", json)
+                    saveFile("nikki-backup.json", json)
                 }
             }.padding(vertical = 6.dp),
         )
@@ -231,15 +231,28 @@ fun SettingsScreen(
         Spacer(Modifier.height(36.dp))
         SectionHeader("about")
 
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AppLogo(size = 64f)
-            Spacer(Modifier.height(10.dp))
-            Text("memosapp", fontSize = 18.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onBackground)
-            Text("version 1.0.0", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            AppLogo(size = 96f)
+            Column {
+                Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onBackground)
+                Text("v1.0.0", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                Text("a memos client with todoist-style tasks", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(2.dp))
+                Text("by avinal kumar", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "report issues at github.com/avinal/nikki",
+            fontSize = 12.sp,
+            color = accent,
+        )
 
         Spacer(Modifier.height(36.dp))
 

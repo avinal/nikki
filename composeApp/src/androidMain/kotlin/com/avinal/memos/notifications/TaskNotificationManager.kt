@@ -84,7 +84,7 @@ object TaskNotificationManager {
             .setContentTitle(title)
             .setContentText(dueLabel)
             .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
-            .setSubText(when (priority) { 1 -> "p1 urgent"; 2 -> "p2 medium"; 3 -> "p3 low"; else -> "memos" })
+            .setSubText(when (priority) { 1 -> "p1 urgent"; 2 -> "p2 medium"; 3 -> "p3 low"; else -> "nikki" })
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
             .setPriority(notifPriority)

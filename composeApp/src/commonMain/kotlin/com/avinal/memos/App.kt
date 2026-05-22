@@ -5,7 +5,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.avinal.memos.ui.navigation.AppNavHost
-import com.avinal.memos.ui.theme.MemosAppTheme
+import com.avinal.memos.ui.theme.NikkiTheme
 import com.avinal.memos.util.LocalAppDependencies
 
 @Composable
@@ -20,7 +20,7 @@ fun App() {
             .build()
     }
 
-    MemosAppTheme {
+    NikkiTheme {
         AppNavHost(deps)
     }
 }

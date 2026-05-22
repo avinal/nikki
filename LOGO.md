@@ -1,4 +1,4 @@
-# MemosApp Logo Specification
+# Nikki Logo Specification
 
 ## Concept
 
