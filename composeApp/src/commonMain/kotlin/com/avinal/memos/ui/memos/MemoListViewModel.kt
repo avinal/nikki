@@ -24,6 +24,7 @@ data class MemoListUiState(
     val isSearching: Boolean = false,
     val error: String? = null,
     val isInitialLoading: Boolean = true,
+    val statusMessage: String? = null,
 )
 
 class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel() {
@@ -93,7 +94,22 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
     }
 
     fun createMemo(content: String, visibility: com.avinal.memos.domain.MemoVisibility, attachmentNames: List<String> = emptyList()) {
-        viewModelScope.launch { memoRepository.createMemo(content, visibility, attachmentNames) }
+        viewModelScope.launch {
+            val result = memoRepository.createMemo(content, visibility, attachmentNames)
+            when (result) {
+                is com.avinal.memos.api.ApiResult.NetworkError -> {
+                    _uiState.update { it.copy(statusMessage = "saved offline — will sync when back online") }
+                    kotlinx.coroutines.delay(3000)
+                    _uiState.update { it.copy(statusMessage = null) }
+                }
+                is com.avinal.memos.api.ApiResult.Error -> {
+                    _uiState.update { it.copy(statusMessage = "failed: ${result.message}") }
+                    kotlinx.coroutines.delay(3000)
+                    _uiState.update { it.copy(statusMessage = null) }
+                }
+                else -> {}
+            }
+        }
     }
 
     fun deleteMemo(id: String) {
@@ -109,13 +125,20 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
     }
 
     fun updateMemo(id: String, content: String, visibility: com.avinal.memos.domain.MemoVisibility) {
-        viewModelScope.launch { memoRepository.updateMemo(id, content = content, visibility = visibility) }
+        viewModelScope.launch {
+            val result = memoRepository.updateMemo(id, content = content, visibility = visibility)
+            if (result is com.avinal.memos.api.ApiResult.NetworkError) {
+                _uiState.update { it.copy(statusMessage = "saved offline") }
+                kotlinx.coroutines.delay(3000)
+                _uiState.update { it.copy(statusMessage = null) }
+            }
+        }
     }
 
     fun toggleTask(memoId: String, lineIndex: Int, checked: Boolean) {
         viewModelScope.launch {
             val memo = memoRepository.getMemo(memoId) ?: return@launch
-            val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, memo.content)
+            val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, memo.content, memo.tags)
             val task = tasks.find { it.lineIndex == lineIndex } ?: return@launch
             val newContent = com.avinal.memos.parser.TaskParser.toggleTaskInContent(memo.content, task)
             if (newContent != memo.content) memoRepository.updateMemo(memoId, content = newContent)

@@ -13,7 +13,7 @@ import kotlinx.datetime.TimeZone
 object DirectAlarmScheduler {
 
     fun scheduleFromMemos(context: Context, memos: List<Memo>) {
-        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content) }
+        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
         val nowMillis = Clock.System.now().toEpochMilliseconds()
         val tz = TimeZone.currentSystemDefault()
 

@@ -25,3 +25,8 @@ composeApp/schemas/
 index.html
 script.js
 styles.css
+
+# Dev artifacts
+PLAN.md
+Screenshot_*.png
+logo-*.svg

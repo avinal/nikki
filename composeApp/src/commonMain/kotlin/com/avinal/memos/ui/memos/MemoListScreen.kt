@@ -313,6 +313,17 @@ fun MemoListScreen(
                         }
                     }
 
+                    val parseWarnings = remember(composeText) { com.avinal.memos.parser.TaskParser.validateContent(composeText) }
+                    if (parseWarnings.isNotEmpty()) {
+                        parseWarnings.forEach { warning ->
+                            Text(
+                                "⚠ ${warning.taskText}: ${warning.issue}",
+                                fontSize = 11.sp, color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    }
+
                     if (uploadedAttachmentNames.isNotEmpty()) {
                         Text(
                             "${uploadedAttachmentNames.size} attachment(s) ready",
@@ -373,6 +384,17 @@ fun MemoListScreen(
             }
             }
 
+            if (uiState.statusMessage != null) {
+                item {
+                    Text(
+                        uiState.statusMessage!!,
+                        fontSize = 12.sp,
+                        color = accent,
+                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                    )
+                }
+            }
+
             if (showArchived && isLoadingArchived) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
@@ -393,14 +415,7 @@ fun MemoListScreen(
                 }
             }
 
-            if (uiState.error != null) {
-                item {
-                    Text(
-                        uiState.error!!, fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
-                    )
-                }
-            }
+            // Errors shown via bottom banner in MainScreen, not inline
 
             items(memos, key = { it.id }) { memo ->
                 if (showArchived) {

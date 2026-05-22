@@ -46,7 +46,7 @@ class TaskCheckWorker(
 
         try {
             val memos = db.memoDao().getAll().map { it.toDomain() }
-            val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content) }
+            val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
             val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val tz = TimeZone.currentSystemDefault()
 

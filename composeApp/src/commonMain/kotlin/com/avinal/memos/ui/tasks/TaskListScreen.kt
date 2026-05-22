@@ -92,6 +92,46 @@ fun TaskListScreen(
                 .background(subtleColor.copy(alpha = 0.15f))
         )
 
+        // Parser doctor banner
+        val allIssues = grouped.warnings
+        val errorColor = Color(0xFFE51400)
+        val warnColor = Color(0xFFF0A30A)
+        val errors = allIssues.filter { it.severity == com.avinal.memos.parser.IssueSeverity.ERROR }
+        val warns = allIssues.filter { it.severity == com.avinal.memos.parser.IssueSeverity.WARNING }
+        var showWarningDetails by remember { mutableStateOf(false) }
+        // Composite keys (memoId:lineIndex) for dot indicators
+        val errorKeys = remember(allIssues) { allIssues.filter { it.severity == com.avinal.memos.parser.IssueSeverity.ERROR && it.taskText.isNotEmpty() }.map { "${it.memoId}:${it.lineIndex}" }.toSet() }
+        val warnKeys = remember(allIssues) { allIssues.filter { it.severity == com.avinal.memos.parser.IssueSeverity.WARNING && it.taskText.isNotEmpty() }.map { "${it.memoId}:${it.lineIndex}" }.toSet() }
+
+        if (allIssues.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showWarningDetails = !showWarningDetails },
+            ) {
+                val bannerBg = if (errors.isNotEmpty()) errorColor.copy(alpha = 0.08f) else warnColor.copy(alpha = 0.08f)
+                val summaryText = buildString {
+                    append("${allIssues.size} issue${if (allIssues.size > 1) "s" else ""} found")
+                    val parts = mutableListOf<String>()
+                    if (errors.isNotEmpty()) parts.add("${errors.size} error${if (errors.size > 1) "s" else ""}")
+                    if (warns.isNotEmpty()) parts.add("${warns.size} warning${if (warns.size > 1) "s" else ""}")
+                    append(": ${parts.joinToString(", ")}")
+                }
+
+                Column(modifier = Modifier.fillMaxWidth().background(bannerBg)) {
+                    Text(summaryText, fontSize = 12.sp,
+                        color = if (errors.isNotEmpty()) errorColor else warnColor,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
+
+                    if (showWarningDetails) {
+                        Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 6.dp)) {
+                            MixedIssuesList(allIssues, errorColor, warnColor, textColor)
+                        }
+                    }
+                }
+            }
+        }
+
         LazyColumn(modifier = Modifier.weight(1f)) {
             grouped.groups.forEachIndexed { groupIndex, group ->
                 item(key = "header_${group.title}") {
@@ -134,9 +174,17 @@ fun TaskListScreen(
 
                 if (!group.collapsed) {
                     items(group.tasks, key = { it.id }) { task ->
+                        val taskKey = "${task.memoId}:${task.lineIndex}"
+                        val dotColor = when {
+                            task.isCompleted -> null
+                            taskKey in errorKeys -> errorColor
+                            taskKey in warnKeys -> warnColor
+                            else -> null
+                        }
                         MetroTaskRow(
                             task = task,
                             accent = accent,
+                            dotColor = dotColor,
                             textColor = textColor,
                             subtleColor = subtleColor,
                             onToggle = { viewModel.toggleTask(task) },
@@ -199,6 +247,7 @@ private fun MetroTaskRow(
     subtleColor: Color,
     onToggle: () -> Unit,
     onClick: () -> Unit,
+    dotColor: Color? = null,
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
@@ -253,6 +302,97 @@ private fun MetroTaskRow(
                     }
                 }
             }
+        }
+
+        if (dotColor != null) {
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.size(5.dp).background(dotColor, androidx.compose.foundation.shape.CircleShape))
+        }
+    }
+}
+
+@Composable
+private fun MixedIssuesList(
+    issues: List<com.avinal.memos.parser.ParseWarning>,
+    errorColor: Color, warnColor: Color, textColor: Color,
+) {
+    val combined = issues.filter { it.taskText.isEmpty() }
+    val taskIssues = issues.filter { it.taskText.isNotEmpty() }
+
+    // Group by memo+line preserving document order
+    val grouped = mutableListOf<List<com.avinal.memos.parser.ParseWarning>>()
+    val seen = mutableSetOf<String>()
+    taskIssues.forEach { w ->
+        val key = "${w.memoId}:${w.lineIndex}"
+        if (key !in seen) {
+            seen.add(key)
+            grouped.add(taskIssues.filter { it.memoId == w.memoId && it.lineIndex == w.lineIndex })
+        }
+    }
+
+    // Task issues first, then combined at the end
+    var num = 0
+    grouped.forEach { group ->
+        num++
+        val first = group.first()
+            val allHighlights = group.map { w ->
+                w.highlight to (if (w.severity == com.avinal.memos.parser.IssueSeverity.ERROR) errorColor else warnColor)
+            }.filter { it.first.isNotEmpty() }
+
+            Column(modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)) {
+                Row {
+                    Text("$num. ", fontSize = 11.sp, color = textColor.copy(alpha = 0.5f))
+                    HighlightedTextMultiColor(first.taskText, allHighlights, textColor)
+                }
+                group.forEach { w ->
+                    val color = if (w.severity == com.avinal.memos.parser.IssueSeverity.ERROR) errorColor else warnColor
+                    Text(w.issue, fontSize = 11.sp, color = color.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(start = 16.dp, top = 1.dp))
+                }
+            }
+    }
+
+    combined.forEach { w ->
+        num++
+        val color = if (w.severity == com.avinal.memos.parser.IssueSeverity.ERROR) errorColor else warnColor
+        Text("$num. ${w.issue}", fontSize = 11.sp, color = color.copy(alpha = 0.8f), modifier = Modifier.padding(top = 3.dp))
+    }
+}
+
+@Composable
+private fun HighlightedTextMultiColor(text: String, highlights: List<Pair<String, Color>>, normalColor: Color) {
+    if (highlights.isEmpty()) {
+        Text(text, fontSize = 11.sp, color = normalColor)
+        return
+    }
+
+    data class Span(val start: Int, val end: Int, val color: Color)
+    val spans = highlights.flatMap { (h, color) ->
+        val results = mutableListOf<Span>()
+        var searchFrom = 0
+        while (true) {
+            val idx = text.indexOf(h, searchFrom, ignoreCase = true)
+            if (idx < 0) break
+            results.add(Span(idx, idx + h.length, color))
+            searchFrom = idx + h.length
+        }
+        results
+    }.sortedBy { it.start }
+
+    var pos = 0
+    Row {
+        spans.forEach { span ->
+            if (span.start > pos) {
+                Text(text.substring(pos, span.start), fontSize = 11.sp, color = normalColor)
+            }
+            if (span.start >= pos) {
+                Text(text.substring(span.start, span.end), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = span.color,
+                    modifier = Modifier.background(span.color.copy(alpha = 0.12f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)).padding(horizontal = 2.dp))
+                pos = span.end
+            }
+        }
+        if (pos < text.length) {
+            Text(text.substring(pos), fontSize = 11.sp, color = normalColor)
         }
     }
 }

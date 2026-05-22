@@ -4,6 +4,8 @@ import com.avinal.memos.api.ApiResult
 import com.avinal.memos.api.MemosApiClient
 import com.avinal.memos.api.model.toDomain
 import com.avinal.memos.db.dao.MemoDao
+import com.avinal.memos.db.dao.PendingSyncDao
+import com.avinal.memos.db.entity.PendingSyncEntity
 import com.avinal.memos.db.entity.toEntity
 import com.avinal.memos.db.entity.toDomain
 import kotlin.time.Clock
@@ -11,8 +13,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class MemoRepository(
     private val apiClient: MemosApiClient,
@@ -23,6 +30,12 @@ class MemoRepository(
     private var hasMorePages: Boolean = true
     private var lastFetchTime: Long = 0L
     var syncIntervalMinutes: Int = 5
+
+    var pendingSyncDao: PendingSyncDao? = null
+    private val _lastSyncTime = MutableStateFlow(0L)
+    val lastSyncTime: StateFlow<Long> = _lastSyncTime
+    @Volatile var isOffline: Boolean = false
+        private set
 
     private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
@@ -52,6 +65,8 @@ class MemoRepository(
     }
 
     suspend fun refreshMemos(): ApiResult<List<Memo>> {
+        drainPendingSync()
+
         nextPageToken = ""
         hasMorePages = true
         val allFetched = mutableListOf<Memo>()
@@ -65,12 +80,14 @@ class MemoRepository(
                     token = result.data.nextPageToken
                 }
                 is ApiResult.Error -> return result
-                is ApiResult.NetworkError -> return result
+                is ApiResult.NetworkError -> { isOffline = true; return result }
             }
         } while (token.isNotEmpty())
 
+        isOffline = false
         val now = nowMillis()
         lastFetchTime = now
+        _lastSyncTime.value = now
         memoDao.deleteAll()
         memoDao.upsertAll(allFetched.map { it.toEntity(now) })
         nextPageToken = ""
@@ -107,7 +124,14 @@ class MemoRepository(
                 ApiResult.Success(memo)
             }
             is ApiResult.Error -> result
-            is ApiResult.NetworkError -> result
+            is ApiResult.NetworkError -> {
+                pendingSyncDao?.insert(PendingSyncEntity(
+                    memoId = null, action = "CREATE",
+                    payload = """{"content":"${content.replace("\"", "\\\"")}","visibility":"${visibility.toApiString()}"}""",
+                    createdAt = nowMillis(),
+                ))
+                result
+            }
         }
     }
 
@@ -130,7 +154,19 @@ class MemoRepository(
                 ApiResult.Success(memo)
             }
             is ApiResult.Error -> result
-            is ApiResult.NetworkError -> result
+            is ApiResult.NetworkError -> {
+                val payloadParts = buildList {
+                    if (content != null) add(""""content":"${content.replace("\"", "\\\"")}"""")
+                    if (visibility != null) add(""""visibility":"${visibility.toApiString()}"""")
+                    if (pinned != null) add(""""pinned":$pinned""")
+                }
+                pendingSyncDao?.insert(PendingSyncEntity(
+                    memoId = id, action = "UPDATE",
+                    payload = "{${payloadParts.joinToString(",")}}",
+                    createdAt = nowMillis(),
+                ))
+                result
+            }
         }
     }
 
@@ -191,6 +227,29 @@ class MemoRepository(
             }
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> result
+        }
+    }
+
+    suspend fun drainPendingSync() {
+        val dao = pendingSyncDao ?: return
+        val pending = dao.getAll()
+        for (op in pending) {
+            val success = when (op.action) {
+                "CREATE" -> {
+                    val json = Json.parseToJsonElement(op.payload).jsonObject
+                    val content = json["content"]?.jsonPrimitive?.content ?: continue
+                    val vis = json["visibility"]?.jsonPrimitive?.content ?: "PRIVATE"
+                    apiClient.createMemo(content, vis) is ApiResult.Success
+                }
+                "UPDATE" -> {
+                    val json = Json.parseToJsonElement(op.payload).jsonObject
+                    val content = json["content"]?.jsonPrimitive?.content
+                    apiClient.updateMemo(op.memoId ?: continue, content = content) is ApiResult.Success
+                }
+                "DELETE" -> apiClient.deleteMemo(op.memoId ?: continue) is ApiResult.Success
+                else -> false
+            }
+            if (success) dao.deleteById(op.id)
         }
     }
 

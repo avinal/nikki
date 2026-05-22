@@ -42,6 +42,8 @@ class AppDependencies(
     val memoRepository: MemoRepository by lazy {
         MemoRepository(apiClient, database.memoDao()) {
             com.avinal.memos.util.triggerReminderCheck()
+        }.also {
+            it.pendingSyncDao = database.pendingSyncDao()
         }
     }
 

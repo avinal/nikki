@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +63,6 @@ import kotlinx.datetime.toLocalDateTime
 
 private val pivotTitles = listOf("explore", "memos", "tasks", "settings")
 private const val START_PAGE = 1
-private const val PARALLAX_FACTOR = 0.5f
 
 @Composable
 fun MainScreen(
@@ -89,81 +89,135 @@ fun MainScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),
     ) {
+        val screenWidthPx = with(density) { androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp.toPx() }
+        val startOffset = screenWidthPx * 0.16f
+        val gapPx = with(density) { 32.dp.toPx() }
+
+        // Measure title widths to position them with consistent visual gaps
+        val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+        val titleWidths = remember(pivotTitles) {
+            pivotTitles.map { title ->
+                textMeasurer.measure(title, style = androidx.compose.ui.text.TextStyle(fontSize = 42.sp, fontWeight = FontWeight.Light)).size.width.toFloat()
+            }
+        }
+        // Cumulative x positions: each title starts after previous title + gap
+        val titlePositions = remember(titleWidths) {
+            val positions = mutableListOf(0f)
+            for (i in 1 until titleWidths.size) {
+                positions.add(positions[i - 1] + titleWidths[i - 1] + gapPx)
+            }
+            positions
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp, bottom = 6.dp),
         ) {
             val scrollFraction = pagerState.currentPage + pagerState.currentPageOffsetFraction
-            val parallaxOffset = with(density) { (-scrollFraction * PARALLAX_FACTOR * 100.dp.toPx()).toInt() }
+            // Shift so the active title's position aligns to startOffset
+            val activePos = if (scrollFraction >= 0) {
+                val idx = scrollFraction.toInt().coerceIn(0, titlePositions.size - 1)
+                val frac = scrollFraction - idx
+                val nextIdx = (idx + 1).coerceAtMost(titlePositions.size - 1)
+                titlePositions[idx] * (1 - frac) + titlePositions[nextIdx] * frac
+            } else 0f
+            val baseShift = startOffset - activePos
 
-            Row(
-                modifier = Modifier
-                    .offset { IntOffset(parallaxOffset, 0) }
-                    .padding(start = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                pivotTitles.forEachIndexed { index, title ->
-                    val distance = kotlin.math.abs(scrollFraction - index)
-                    val alpha = (1f - distance * 0.5f).coerceIn(0.2f, 1f)
-                    val isSelected = pagerState.currentPage == index
+            pivotTitles.forEachIndexed { index, title ->
+                val offsetPx = (titlePositions[index] + baseShift).toInt()
+                val distance = kotlin.math.abs(scrollFraction - index)
+                val alpha = (1f - distance * 0.5f).coerceIn(0.15f, 1f)
+                val isSelected = pagerState.currentPage == index
 
-                    Text(
-                        text = title,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Light,
-                        color = if (isSelected) accent.copy(alpha = alpha)
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha * 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Visible,
-                        softWrap = false,
-                        modifier = Modifier
-                            .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
-                            .padding(vertical = 4.dp),
-                    )
+                Text(
+                    text = title,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Light,
+                    color = if (isSelected) accent.copy(alpha = alpha)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha * 0.4f),
+                    maxLines = 1,
+                    modifier = Modifier
+                        .offset { IntOffset(offsetPx, 0) }
+                        .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
+
+        val lastSync by deps.memoRepository.lastSyncTime.collectAsState()
+        val pendingCount by deps.memoRepository.pendingSyncDao?.observeCount()?.collectAsState(initial = 0) ?: remember { mutableStateOf(0) }
+        val syncAge = if (lastSync > 0L) ((kotlin.time.Clock.System.now().toEpochMilliseconds() - lastSync) / 60000).toInt() else -1
+        val isOffline = deps.memoRepository.isOffline
+
+        Box(modifier = Modifier.weight(1f)) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1,
+            ) { page ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (page) {
+                        0 -> ExplorerPage(
+                            deps = deps,
+                            onMemoClick = onMemoClick,
+                            onDateSelected = { date ->
+                                dateFilter = date; tagFilter = null; searchFilter = null; showArchived = false
+                                navigateToMemosWithFilter()
+                            },
+                            onTagSelected = { tag ->
+                                tagFilter = tag; dateFilter = null; searchFilter = null; showArchived = false
+                                navigateToMemosWithFilter()
+                            },
+                            onSearchSubmit = { query ->
+                                searchFilter = query; dateFilter = null; tagFilter = null; showArchived = false
+                                navigateToMemosWithFilter()
+                            },
+                            onShowArchived = {
+                                showArchived = true; dateFilter = null; tagFilter = null; searchFilter = null
+                                navigateToMemosWithFilter()
+                            },
+                        )
+                        1 -> MemoListScreen(
+                            deps = deps,
+                            onMemoClick = onMemoClick,
+                            onCreateMemo = onCreateMemo,
+                            dateFilter = dateFilter,
+                            tagFilter = tagFilter,
+                            searchFilter = searchFilter,
+                            showArchived = showArchived,
+                            onClearFilter = { dateFilter = null; tagFilter = null; searchFilter = null; showArchived = false },
+                        )
+                        2 -> TaskListScreen(deps = deps, onMemoClick = onMemoClick)
+                        3 -> SettingsScreen(deps = deps, onLogout = onLogout)
+                    }
                 }
             }
         }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1,
-        ) { page ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (page) {
-                    0 -> ExplorerPage(
-                        deps = deps,
-                        onMemoClick = onMemoClick,
-                        onDateSelected = { date ->
-                            dateFilter = date; tagFilter = null; searchFilter = null; showArchived = false
-                            navigateToMemosWithFilter()
-                        },
-                        onTagSelected = { tag ->
-                            tagFilter = tag; dateFilter = null; searchFilter = null; showArchived = false
-                            navigateToMemosWithFilter()
-                        },
-                        onSearchSubmit = { query ->
-                            searchFilter = query; dateFilter = null; tagFilter = null; showArchived = false
-                            navigateToMemosWithFilter()
-                        },
-                        onShowArchived = {
-                            showArchived = true; dateFilter = null; tagFilter = null; searchFilter = null
-                            navigateToMemosWithFilter()
-                        },
+        // Bottom status banner
+        if (isOffline || pendingCount > 0 || syncAge > 5) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (isOffline) MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     )
-                    1 -> MemoListScreen(
-                        deps = deps,
-                        onMemoClick = onMemoClick,
-                        onCreateMemo = onCreateMemo,
-                        dateFilter = dateFilter,
-                        tagFilter = tagFilter,
-                        searchFilter = searchFilter,
-                        showArchived = showArchived,
-                        onClearFilter = { dateFilter = null; tagFilter = null; searchFilter = null; showArchived = false },
-                    )
-                    2 -> TaskListScreen(deps = deps, onMemoClick = onMemoClick)
-                    3 -> SettingsScreen(deps = deps, onLogout = onLogout)
+                    .padding(horizontal = 24.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val statusText = buildString {
+                    if (isOffline) append("offline")
+                    else if (syncAge < 0) append("not synced")
+                    else if (syncAge == 0) append("synced just now")
+                    else append("synced ${syncAge}m ago")
+                }
+                Text(statusText, fontSize = 11.sp, color = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+
+                if (pendingCount > 0) {
+                    Text("$pendingCount pending", fontSize = 11.sp, color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
                 }
             }
         }
@@ -255,8 +309,17 @@ private fun ExplorerPage(
         }
 
         Spacer(Modifier.height(12.dp))
+
+        var archivedCount by remember { mutableStateOf(0) }
+        LaunchedEffect(Unit) {
+            when (val result = deps.apiClient.listArchivedMemos()) {
+                is com.avinal.memos.api.ApiResult.Success -> archivedCount = result.data.memos.size
+                else -> {}
+            }
+        }
+
         Text(
-            "view archived memos",
+            "view archived memos${if (archivedCount > 0) " ($archivedCount)" else ""}",
             fontSize = 14.sp,
             color = accent,
             modifier = Modifier.clickable { onShowArchived() }.padding(vertical = 4.dp),
@@ -360,7 +423,7 @@ private fun ExplorerPage(
         if (allTags.isNotEmpty()) {
             val tasksByTag = remember(memos) {
                 val parser = com.avinal.memos.parser.TaskParser
-                val allTasks = memos.flatMap { memo -> parser.extractTasks(memo.id, memo.content) }
+                val allTasks = memos.flatMap { memo -> parser.extractTasks(memo.id, memo.content, memo.tags) }
                 allTasks.filter { !it.isCompleted }.groupBy { it.lists.firstOrNull() ?: "" }
             }
 

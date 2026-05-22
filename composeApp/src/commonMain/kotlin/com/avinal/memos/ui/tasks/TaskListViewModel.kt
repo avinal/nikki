@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoRepository
 import com.avinal.memos.domain.Task
+import com.avinal.memos.parser.ParseWarning
 import com.avinal.memos.parser.TaskParser
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,7 @@ data class TaskGroup(
 data class GroupedTasksResult(
     val groups: List<TaskGroup> = emptyList(),
     val availableLists: List<String> = emptyList(),
+    val warnings: List<ParseWarning> = emptyList(),
 )
 
 class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel() {
@@ -65,7 +67,8 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GroupedTasksResult())
 
     private fun buildGroups(memos: List<Memo>, filters: TaskFilterState, collapsed: Set<String>): GroupedTasksResult {
-        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content) }
+        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
+        val allWarnings = memos.flatMap { memo -> TaskParser.validateContent(memo.content).map { it.copy(memoId = memo.id) } }
         val availableLists = allTasks.flatMap { it.lists }.distinct().sorted()
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
@@ -179,6 +182,7 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
         return GroupedTasksResult(
             groups = groups.map { it.copy(collapsed = it.title in collapsed) },
             availableLists = availableLists,
+            warnings = allWarnings,
         )
     }
 

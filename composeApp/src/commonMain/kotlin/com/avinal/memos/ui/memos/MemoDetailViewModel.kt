@@ -37,7 +37,7 @@ class MemoDetailViewModel(
 
     fun toggleTask(lineIndex: Int, checked: Boolean) {
         val current = memo.value ?: return
-        val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, current.content)
+        val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, current.content, current.tags)
         val task = tasks.find { it.lineIndex == lineIndex } ?: return
         viewModelScope.launch {
             val newContent = com.avinal.memos.parser.TaskParser.toggleTaskInContent(current.content, task)
