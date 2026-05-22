@@ -13,7 +13,7 @@ The logo is inspired by the Google Foobar challenge logo, adapted into a circula
 | Teal            | `#35BEB8` | Wedge section outside the circle       |
 | Background      | `#1F1F1F` | Launcher icon background               |
 
-## Geometry (Circle Variant — Primary)
+## Geometry
 
 All measurements relative to a 108x108dp Android adaptive icon viewport, center at (54, 54).
 
@@ -84,28 +84,6 @@ sin(23.5°) = 0.39875
                       L79.68,65.16 A28,28 0 0,0 79.68,42.84 Z" />
 ```
 
-## Geometry (Triangle Variant — Alternate)
-
-Three concentric equilateral triangles pointing upward, with a 47-degree wedge cutting through the right edge.
-
-### Triangle Circumradii (200x200 SVG, center at 100,100)
-
-| Ring           | Outer R | Inner R | Fill         |
-|----------------|---------|---------|--------------|
-| Outer ring     | 80      | 65      | Pink         |
-| Middle ring    | 55      | 40      | Pink         |
-| Inner triangle | 30      | —       | Pink (solid) |
-| Gap            | 65→55   | —       | Background   |
-| Gap            | 40→30   | —       | Background   |
-
-### Wedge Intersections
-
-The 47-degree wedge (centered on horizontal-right) intersects each triangle's right edge. The intersection points are computed by solving the parametric line-line intersection of the wedge rays with each triangle edge.
-
-- **Black section**: wedge intersection with the middle ring (R=40 to R=55)
-- **Teal section**: wedge intersection with the outer ring (R=65 to R=80)
-- **Inner triangle**: stays fully pink
-
 ## Adaptive Icon Layers
 
 | File                        | Purpose                     |
@@ -123,8 +101,7 @@ Android adaptive icons use a 108dp canvas. The recommended safe zone is a 66dp d
 
 ## Files
 
-- `logo-circle.svg` — Circle variant preview
-- `logo-triangle.svg` — Triangle variant preview
-- `androidApp/src/main/res/drawable/ic_launcher_foreground.xml` — Production circle logo
+- `logo-circle.svg` — SVG preview
+- `androidApp/src/main/res/drawable/ic_launcher_foreground.xml` — Production Android vector
 - `androidApp/src/main/res/drawable/ic_launcher_monochrome.xml` — Themed icon silhouette
 - `androidApp/src/main/res/drawable/ic_launcher_background.xml` — Dark background

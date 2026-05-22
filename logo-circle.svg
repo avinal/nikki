@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" fill="#1F1F1F"/>
+
+  <!-- Pink circle r=52 -->
+  <circle cx="100" cy="100" r="52" fill="#EE67A4"/>
+
+  <!-- Black 47° annular sector: imaginary inner r=37 to pink edge r=52 -->
+  <path fill="#231F20" d="
+    M133.93,85.25
+    L147.69,79.27
+    A52,52 0 0,1 147.69,120.73
+    L133.93,114.75
+    A37,37 0 0,0 133.93,85.25
+    Z"/>
+
+  <!-- Teal 47° annular sector: pink edge r=52 to imaginary outer r=65 -->
+  <path fill="#35BEB8" d="
+    M147.69,79.27
+    L159.61,74.08
+    A65,65 0 0,1 159.61,125.92
+    L147.69,120.73
+    A52,52 0 0,0 147.69,79.27
+    Z"/>
+</svg>

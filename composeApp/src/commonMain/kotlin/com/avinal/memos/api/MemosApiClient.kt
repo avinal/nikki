@@ -141,7 +141,7 @@ class MemosApiClient(
     suspend fun listArchivedMemos(): ApiResult<ListMemosResponse> = apiCall {
         httpClient.get(url("/memos")) {
             parameter("pageSize", 50)
-            parameter("filter", "state == \"ARCHIVED\"")
+            parameter("state", "ARCHIVED")
         }.body()
     }
 
