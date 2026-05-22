@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
+    <!--
+        Cleartext (HTTP) is permitted because users connect to self-hosted
+        Memos instances that may run on local networks, Tailscale (100.x),
+        or other private infrastructure without TLS. The app defaults to
+        HTTPS in the login flow; HTTP requires explicit user input.
+    -->
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
