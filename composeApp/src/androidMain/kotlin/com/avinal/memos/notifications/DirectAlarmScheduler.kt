@@ -48,7 +48,5 @@ object DirectAlarmScheduler {
                 alarmManager.set(AlarmManager.RTC_WAKEUP, alarm.triggerAtMillis, pendingIntent)
             }
         }
-
-        android.util.Log.d("DirectAlarmScheduler", "Scheduled ${alarms.size} alarms from ${memos.size} memos")
     }
 }

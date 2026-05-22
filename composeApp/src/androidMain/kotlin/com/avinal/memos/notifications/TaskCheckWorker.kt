@@ -50,17 +50,9 @@ class TaskCheckWorker(
             val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val tz = TimeZone.currentSystemDefault()
 
-            android.util.Log.d("TaskCheckWorker", "Found ${memos.size} memos, ${allTasks.size} tasks, scheduled=${scheduledIds.size}")
-            allTasks.forEach { t ->
-                android.util.Log.d("TaskCheckWorker", "Task: ${t.text}, date=${t.dueDate}, time=${t.dueTime}, reminder=${t.reminder}, completed=${t.isCompleted}, id=${t.id}")
-            }
-
-            android.util.Log.d("TaskCheckWorker", "nowMillis=$nowMillis, tz=$tz, defaultTime=$defaultTime")
             val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, scheduledIds, defaultTime)
-            android.util.Log.d("TaskCheckWorker", "Computed ${alarms.size} alarms")
 
             alarms.forEach { alarm ->
-                android.util.Log.d("TaskCheckWorker", "Scheduling: ${alarm.taskText} at ${alarm.triggerAtMillis} (${alarm.label}) p=${alarm.priority}")
                 scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
             }
 

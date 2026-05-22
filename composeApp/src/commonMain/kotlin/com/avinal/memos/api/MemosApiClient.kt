@@ -92,7 +92,7 @@ class MemosApiClient(
     suspend fun searchMemos(query: String): ApiResult<ListMemosResponse> = apiCall {
         httpClient.get(url("/memos")) {
             parameter("pageSize", 50)
-            parameter("filter", "content.contains(\"$query\")")
+            parameter("filter", "content.contains(\"${query.replace("\\", "\\\\").replace("\"", "\\\"")}\")")
         }.body()
     }
 
