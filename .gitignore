@@ -26,6 +26,10 @@ index.html
 script.js
 styles.css
 
+# Signing
+*.jks
+*.keystore
+
 # Dev artifacts
 PLAN.md
 Screenshot_*.png

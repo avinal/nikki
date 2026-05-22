@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ${{ runner.temp }}/keystore.jks
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: ./gradlew :androidApp:assembleRelease
+
+      - name: Upload release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv androidApp/build/outputs/apk/release/androidApp-release.apk nikki-${{ github.event.release.tag_name }}.apk
+          gh release upload ${{ github.event.release.tag_name }} nikki-${{ github.event.release.tag_name }}.apk
