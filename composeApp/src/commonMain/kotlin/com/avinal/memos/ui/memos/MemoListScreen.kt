@@ -16,12 +16,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,11 +53,14 @@ import com.avinal.memos.domain.MemoVisibility
 import com.avinal.memos.ui.components.MemoCard
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.util.rememberFilePicker
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalEncodingApi::class)
 @Composable
@@ -121,7 +130,7 @@ fun MemoListScreen(
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    var composeText by remember { mutableStateOf("") }
+    var composeField by remember { mutableStateOf(TextFieldValue("")) }
     val defaultVis by produceState(MemoVisibility.PRIVATE) {
         deps.tokenStore.defaultVisibility.first().let { value = MemoVisibility.fromApiString(it) }
     }
@@ -225,8 +234,8 @@ fun MemoListScreen(
                                             .clickable {
                                                 showInsertMenu = false
                                                 when (item) {
-                                                    "code block" -> composeText += "\n```\n\n```"
-                                                    "link memo" -> composeText += "\n[memo]()"
+                                                    "code block" -> { val t = composeField.text + "\n```\n\n```"; composeField = TextFieldValue(t, TextRange(t.length)) }
+                                                    "link memo" -> { val t = composeField.text + "\n[memo]()"; composeField = TextFieldValue(t, TextRange(t.length)) }
                                                     "media", "file" -> launchFilePicker()
                                                 }
                                             }
@@ -241,18 +250,36 @@ fun MemoListScreen(
 
                 Column(modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
                     TextField(
-                        value = composeText,
-                        onValueChange = { newText ->
-                            // Auto-checklist: if user pressed enter after a task line, auto-insert "- [ ] "
-                            if (newText.length > composeText.length && newText.endsWith("\n")) {
-                                val beforeNewline = newText.dropLast(1)
-                                val lastLine = beforeNewline.lines().lastOrNull() ?: ""
-                                if (lastLine.trimStart().startsWith("- [")) {
-                                    composeText = newText + "- [ ] "
+                        value = composeField,
+                        onValueChange = { newField ->
+                            val newText = newField.text
+                            val oldText = composeField.text
+                            // Backspace on empty auto-inserted line: remove it
+                            if (newText.length < oldText.length && oldText.endsWith("- [ ] ") && newText == oldText.dropLast(6).trimEnd() + "\n") {
+                                val cleaned = newText.trimEnd('\n')
+                                composeField = TextFieldValue(cleaned, TextRange(cleaned.length))
+                                return@TextField
+                            }
+                            // Enter on empty auto-inserted line: remove it
+                            if (newText.length > oldText.length && newText.endsWith("\n") && oldText.endsWith("- [ ] ")) {
+                                val lastLine = oldText.lines().last()
+                                if (lastLine.trim() == "- [ ]") {
+                                    val cleaned = oldText.dropLast(lastLine.length + 1).trimEnd('\n') + "\n"
+                                    composeField = TextFieldValue(cleaned, TextRange(cleaned.length))
                                     return@TextField
                                 }
                             }
-                            composeText = newText
+                            // Auto-checklist: if user pressed enter after a task line, auto-insert "- [ ] "
+                            if (newText.length > oldText.length && newText.endsWith("\n")) {
+                                val beforeNewline = newText.dropLast(1)
+                                val lastLine = beforeNewline.lines().lastOrNull() ?: ""
+                                if (lastLine.trimStart().startsWith("- [")) {
+                                    val result = newText + "- [ ] "
+                                    composeField = TextFieldValue(result, TextRange(result.length))
+                                    return@TextField
+                                }
+                            }
+                            composeField = newField
                         },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
@@ -261,7 +288,7 @@ fun MemoListScreen(
                         singleLine = false,
                         minLines = 1,
                         maxLines = 10,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -271,53 +298,48 @@ fun MemoListScreen(
                         ),
                     )
 
-                    // Live metadata preview
-                    val previewChips = remember(composeText) {
-                        val parser = com.avinal.memos.parser.TaskParser
-                        val tasks = parser.extractTasks("preview", composeText)
-                        if (tasks.isEmpty()) emptyList()
-                        else tasks.flatMap { task ->
-                            buildList {
-                                task.dueDate?.let { add("due: $it" to accent) }
-                                task.dueTime?.let { add("at: $it" to accent) }
-                                task.reminder?.let { add("!$it" to accent) }
-                                task.priority?.let {
-                                    val color = when (it) {
-                                        1 -> com.avinal.memos.ui.theme.PriorityP1
-                                        2 -> com.avinal.memos.ui.theme.PriorityP2
-                                        else -> com.avinal.memos.ui.theme.PriorityP3
-                                    }
-                                    add("p$it" to color)
-                                }
-                                task.lists.forEach { add("#$it" to accent) }
-                            }
-                        }.distinct()
+                    // Per-task live preview
+                    val previewTasks = remember(composeField.text) {
+                        com.avinal.memos.parser.TaskParser.extractTasks("preview", composeField.text)
                     }
 
-                    if (previewChips.isNotEmpty()) {
-                        androidx.compose.foundation.layout.FlowRow(
-                            modifier = Modifier.padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            previewChips.forEach { (label, color) ->
-                                Text(
-                                    label,
-                                    fontSize = 11.sp,
-                                    color = color,
-                                    modifier = Modifier
-                                        .background(color.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                                )
+                    if (previewTasks.isNotEmpty()) {
+                        Column(modifier = Modifier.padding(top = 6.dp)) {
+                            previewTasks.forEach { task ->
+                                Row(
+                                    modifier = Modifier.padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        if (task.isCompleted) "☑" else "☐",
+                                        fontSize = 12.sp,
+                                        color = if (task.isCompleted) accent else subtleColor,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        task.text,
+                                        fontSize = 12.sp,
+                                        color = if (task.isCompleted) subtleColor else textColor,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    task.dueDate?.let { MetadataChip("$it", accent) }
+                                    task.dueTime?.let { MetadataChip("$it", accent) }
+                                    task.reminder?.let { MetadataChip("!$it", subtleColor) }
+                                    task.priority?.let { p ->
+                                        val c = when (p) { 1 -> com.avinal.memos.ui.theme.PriorityP1; 2 -> com.avinal.memos.ui.theme.PriorityP2; else -> com.avinal.memos.ui.theme.PriorityP3 }
+                                        MetadataChip("p$p", c)
+                                    }
+                                    task.lists.forEach { MetadataChip("#$it", accent) }
+                                }
                             }
                         }
                     }
 
-                    val parseWarnings = remember(composeText) { com.avinal.memos.parser.TaskParser.validateContent(composeText) }
+                    val parseWarnings = remember(composeField.text) { com.avinal.memos.parser.TaskParser.validateContent(composeField.text) }
                     if (parseWarnings.isNotEmpty()) {
                         parseWarnings.forEach { warning ->
                             Text(
-                                "⚠ ${warning.taskText}: ${warning.issue}",
+                                "${warning.taskText}: ${warning.issue}",
                                 fontSize = 11.sp, color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
@@ -337,42 +359,99 @@ fun MemoListScreen(
 
                     Spacer(Modifier.height(6.dp))
 
+                    // Compose toolbar
+                    var showDatePicker by remember { mutableStateOf(false) }
+                    var showTimePicker by remember { mutableStateOf(false) }
+
+                    if (showDatePicker) {
+                        val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+                        val dateState = rememberDatePickerState(
+                            initialSelectedDateMillis = today.toEpochDays().toLong() * 86400000L,
+                        )
+                        DatePickerDialog(
+                            onDismissRequest = { showDatePicker = false },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    dateState.selectedDateMillis?.let { ms ->
+                                        val d = kotlinx.datetime.Instant.fromEpochMilliseconds(ms)
+                                            .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date
+                                        val r = composeField.text.trimEnd() + " $d"; composeField = TextFieldValue(r, TextRange(r.length))
+                                    }
+                                    showDatePicker = false
+                                }) { Text("ok", color = accent) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDatePicker = false }) { Text("cancel") }
+                            },
+                        ) { DatePicker(state = dateState) }
+                    }
+
+                    if (showTimePicker) {
+                        val timeState = rememberTimePickerState()
+                        AlertDialog(
+                            onDismissRequest = { showTimePicker = false },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val h = timeState.hour
+                                    val m = timeState.minute
+                                    val timeStr = if (m == 0) {
+                                        if (h == 0) "12am" else if (h < 12) "${h}am" else if (h == 12) "12pm" else "${h - 12}pm"
+                                    } else {
+                                        "${h}:${m.toString().padStart(2, '0')}"
+                                    }
+                                    val r = composeField.text.trimEnd() + " $timeStr"; composeField = TextFieldValue(r, TextRange(r.length))
+                                    showTimePicker = false
+                                }) { Text("ok", color = accent) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showTimePicker = false }) { Text("cancel") }
+                            },
+                            text = { TimePicker(state = timeState) },
+                        )
+                    }
+
+                    val isEditingTask = remember(composeField.text) {
+                        val lastLine = composeField.text.lines().lastOrNull { it.isNotBlank() } ?: ""
+                        lastLine.trimStart().startsWith("- [")
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "+",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Light,
-                                color = subtleColor,
-                                modifier = Modifier.clickable { showInsertMenu = true },
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ToolbarButton("add task", subtleColor) { val t = composeField.text.let { if (it.isEmpty() || it.endsWith("\n")) it else "$it\n" } + "- [ ] "; composeField = TextFieldValue(t, TextRange(t.length)) }
+                            if (isEditingTask) {
+                                ToolbarButton("due", subtleColor) { showDatePicker = true }
+                                ToolbarButton("at", subtleColor) { showTimePicker = true }
+                            }
+                            ToolbarButton("+", subtleColor) { showInsertMenu = true }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 composeVisibility.name.lowercase(),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 color = subtleColor,
                                 modifier = Modifier.clickable { showVisibilityPicker = true },
                             )
+                            Text(
+                                "post",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (composeField.text.isNotBlank()) accent else subtleColor.copy(alpha = 0.3f),
+                                modifier = Modifier
+                                    .then(
+                                        if (composeField.text.isNotBlank()) Modifier.clickable {
+                                            viewModel.createMemo(composeField.text, composeVisibility, uploadedAttachmentNames)
+                                            composeField = TextFieldValue("")
+                                            uploadedAttachmentNames = emptyList()
+                                        } else Modifier
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                            )
                         }
-
-                        Text(
-                            "post",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (composeText.isNotBlank()) accent else subtleColor.copy(alpha = 0.3f),
-                            modifier = Modifier
-                                .then(
-                                    if (composeText.isNotBlank()) Modifier.clickable {
-                                        viewModel.createMemo(composeText, composeVisibility, uploadedAttachmentNames)
-                                        composeText = ""
-                                        uploadedAttachmentNames = emptyList()
-                                    } else Modifier
-                                )
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                        )
                     }
                 }
 
@@ -453,4 +532,30 @@ fun MemoListScreen(
         }
         }
     }
+}
+
+@Composable
+private fun ToolbarButton(label: String, color: Color, onClick: () -> Unit) {
+    Text(
+        label,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = color,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+    )
+}
+
+@Composable
+private fun MetadataChip(label: String, color: Color) {
+    Text(
+        label,
+        fontSize = 10.sp,
+        color = color,
+        modifier = Modifier
+            .padding(start = 4.dp)
+            .background(color.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(3.dp))
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
 }
