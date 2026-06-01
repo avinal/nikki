@@ -14,6 +14,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import com.avinal.memos.db.entity.toDomain
+import com.avinal.memos.util.syncNotifyTime
 
 class AppDependencies(
     dataStorePath: String,
@@ -55,6 +56,7 @@ class AppDependencies(
             launch { tokenStore.accessToken.collect { cachedToken = it } }
             launch { tokenStore.serverUrl.collect { cachedServerUrl = it } }
             launch { tokenStore.syncInterval.collect { memoRepository.syncIntervalMinutes = it } }
+            launch { tokenStore.defaultNotifyTime.collect { syncNotifyTime(it) } }
             launch { initializeLiveMemosProvider() }
         }
     }

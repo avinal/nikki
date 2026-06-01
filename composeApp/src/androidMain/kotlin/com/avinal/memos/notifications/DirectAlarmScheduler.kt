@@ -7,7 +7,6 @@ import android.content.Intent
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.parser.TaskParser
 import kotlin.time.Clock
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 
 object DirectAlarmScheduler {
@@ -17,12 +16,9 @@ object DirectAlarmScheduler {
         val nowMillis = Clock.System.now().toEpochMilliseconds()
         val tz = TimeZone.currentSystemDefault()
 
-        val prefs = context.getSharedPreferences("memos_prefs", Context.MODE_PRIVATE)
-        val defaultTimeStr = prefs.getString("default_notify_time", "20:00") ?: "20:00"
-        val parts = defaultTimeStr.split(":")
-        val defaultTime = try { LocalTime(parts[0].toInt(), parts.getOrElse(1) { "0" }.toInt()) } catch (_: Exception) { LocalTime(20, 0) }
+        val defaultTime = readDefaultNotifyTime(context)
 
-        val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, emptySet(), defaultTime)
+        val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, defaultTime)
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         alarms.forEach { alarm ->

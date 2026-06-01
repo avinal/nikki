@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.avinal.memos.notifications.TaskNotificationManager
+import com.avinal.memos.notifications.runTaskCheckNow
 
 class TaskReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -19,5 +20,6 @@ class TaskReminderReceiver : BroadcastReceiver() {
             dueLabel = dueLabel,
             priority = priority,
         )
+        runTaskCheckNow(context)
     }
 }

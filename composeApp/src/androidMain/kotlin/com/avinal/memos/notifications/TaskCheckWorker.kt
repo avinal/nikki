@@ -21,20 +21,26 @@ class TaskCheckWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val prefs = appContext.getSharedPreferences("task_notifications", Context.MODE_PRIVATE)
-        val scheduledIds = prefs.getStringSet("scheduled_ids", emptySet()) ?: emptySet()
         val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val defaultTime = readDefaultNotifyTime(appContext)
 
-        // Read default notify time from DataStore file (shared prefs fallback)
-        val notifyPrefs = appContext.getSharedPreferences("memos_prefs", Context.MODE_PRIVATE)
-        val defaultTimeStr = notifyPrefs.getString("default_notify_time", "20:00") ?: "20:00"
-        val defaultTimeParts = defaultTimeStr.split(":")
-        val defaultTime = try {
-            kotlinx.datetime.LocalTime(defaultTimeParts[0].toInt(), defaultTimeParts.getOrElse(1) { "0" }.toInt())
-        } catch (_: Exception) {
-            kotlinx.datetime.LocalTime(20, 0)
+        val memos = com.avinal.memos.util.liveMemosProvider?.invoke()
+            ?: readMemosFromDb()
+
+        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
+        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val tz = TimeZone.currentSystemDefault()
+
+        val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, defaultTime)
+
+        alarms.forEach { alarm ->
+            scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
         }
 
+        return Result.success()
+    }
+
+    private suspend fun readMemosFromDb(): List<com.avinal.memos.domain.Memo> {
         val db = Room.databaseBuilder<MemosDatabase>(
             context = appContext,
             name = appContext.getDatabasePath("memos.db").absolutePath,
@@ -44,33 +50,11 @@ class TaskCheckWorker(
             .setQueryCoroutineContext(Dispatchers.IO)
             .build()
 
-        try {
-            val memos = db.memoDao().getAll().map { it.toDomain() }
-            val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
-            val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val tz = TimeZone.currentSystemDefault()
-
-            val alarms = ReminderScheduler.computeAlarms(allTasks, nowMillis, tz, scheduledIds, defaultTime)
-
-            alarms.forEach { alarm ->
-                scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
-            }
-
-            val newScheduledIds = scheduledIds.toMutableSet()
-            alarms.forEach { newScheduledIds.add(it.taskId) }
-
-            val activeTaskIds = allTasks.filter { !it.isCompleted }.map { it.id }.toSet()
-            val cleaned = newScheduledIds.filter { id ->
-                val baseId = id.removeSuffix("_am").removeSuffix("_pm").removeSuffix("_remind")
-                baseId in activeTaskIds
-            }.toSet()
-
-            prefs.edit().putStringSet("scheduled_ids", cleaned).apply()
+        return try {
+            db.memoDao().getAll().map { it.toDomain() }
         } finally {
             db.close()
         }
-
-        return Result.success()
     }
 
     private fun scheduleAlarm(
@@ -103,7 +87,6 @@ class TaskCheckWorker(
         try {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         } catch (_: SecurityException) {
-            // Fallback if exact alarm permission not granted
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }
