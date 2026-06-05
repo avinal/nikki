@@ -1,0 +1,19 @@
+Nikki is a native Android client for Memos, the open-source self-hosted note-taking tool. It adds Todoist-style task management on top of your memos, with a Windows Phone Metro-inspired interface.
+
+Tasks are parsed directly from markdown checkboxes in your notes. Write "- [ ] buy milk tomorrow 5pm p1 #shopping" and Nikki extracts the due date, time, priority, and tags — giving you a structured task view without duplicating data.
+
+Features:
+• Full Memos API integration (create, edit, pin, archive, delete)
+• Rich markdown rendering with code highlighting, tables, and links
+• Due dates (ISO, today, tomorrow, next monday, in 3 days)
+• Times (12h/24h), priorities (p1-p3), reminders, tags
+• Group and sort tasks by date, priority, list, or memo
+• Android notifications with 4 priority channels
+• Calendar integration for reliable reminders
+• Offline-first with sync queue
+• 3 themes (dark, light, AMOLED) and 20 accent colors
+• Activity calendar, tag browser, and search
+• Export/import backup as JSON
+• Share text from any app into a new memo
+
+Requires a running Memos instance (v0.22+). The name comes from the Japanese word 日記 (nikki), meaning diary.

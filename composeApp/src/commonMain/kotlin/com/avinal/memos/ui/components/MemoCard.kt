@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.avinal.memos.ui.components
 
 import androidx.compose.animation.animateContentSize
@@ -15,11 +16,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +45,8 @@ import com.avinal.memos.domain.MemoVisibility
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.util.sharePlainText
 import kotlin.time.Instant
+import kotlinx.datetime.todayIn
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -201,6 +210,7 @@ private fun MetroMenuItem(text: String, color: Color, onClick: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InlineEditor(
     content: String, visibility: MemoVisibility, accent: Color,
@@ -209,33 +219,144 @@ private fun InlineEditor(
     onSave: () -> Unit, onCancel: () -> Unit,
 ) {
     var showVisibilityMenu by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val isEditingTask = remember(content) {
+        val lastLine = content.lines().lastOrNull { it.isNotBlank() } ?: ""
+        lastLine.trimStart().startsWith("- [")
+    }
+
+    if (showDatePicker) {
+        val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val dateState = rememberDatePickerState(
+            initialSelectedDateMillis = today.toEpochDays().toLong() * 86400000L,
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dateState.selectedDateMillis?.let { ms ->
+                        val d = Instant.fromEpochMilliseconds(ms)
+                            .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date
+                        onContentChange(content.trimEnd() + " $d")
+                    }
+                    showDatePicker = false
+                }) { Text("ok", color = accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("cancel") }
+            },
+        ) { DatePicker(state = dateState) }
+    }
+
+    if (showTimePicker) {
+        val timeState = rememberTimePickerState()
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val h = timeState.hour; val m = timeState.minute
+                    val timeStr = if (m == 0) {
+                        if (h == 0) "12am" else if (h < 12) "${h}am" else if (h == 12) "12pm" else "${h - 12}pm"
+                    } else "${h}:${m.toString().padStart(2, '0')}"
+                    onContentChange(content.trimEnd() + " $timeStr")
+                    showTimePicker = false
+                }) { Text("ok", color = accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("cancel") }
+            },
+            text = { TimePicker(state = timeState) },
+        )
+    }
 
     TextField(
-        value = content, onValueChange = onContentChange,
+        value = content,
+        onValueChange = { newText ->
+            val oldLines = content.lines()
+            val lastLine = oldLines.lastOrNull() ?: ""
+
+            // Backspace on empty auto-inserted task line: remove it
+            if (newText.length < content.length && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                val withoutLast = oldLines.dropLast(1).joinToString("\n")
+                if (newText.trimEnd() == withoutLast.trimEnd()) {
+                    onContentChange(withoutLast)
+                    return@TextField
+                }
+            }
+            // Enter on empty auto-inserted task line: remove it
+            if (newText.length > content.length && newText.endsWith("\n") && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                onContentChange(oldLines.dropLast(1).joinToString("\n") + "\n")
+                return@TextField
+            }
+            // Auto-checklist: continue task list on enter
+            if (newText.length > content.length && newText.endsWith("\n") && lastLine.trimStart().startsWith("- [") && lastLine.trim() != "- [ ]") {
+                onContentChange(newText + "- [ ] ")
+                return@TextField
+            }
+            onContentChange(newText)
+        },
         modifier = Modifier.fillMaxWidth().height(180.dp),
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = textColor,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        ),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
             focusedIndicatorColor = accent, unfocusedIndicatorColor = subtleColor.copy(alpha = 0.3f), cursorColor = accent,
         ),
     )
+
+    val previewTasks = remember(content) {
+        com.avinal.memos.parser.TaskParser.extractTasks("preview", content)
+    }
+    if (previewTasks.isNotEmpty()) {
+        Column(modifier = Modifier.padding(top = 4.dp)) {
+            previewTasks.forEach { task ->
+                Row(modifier = Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (task.isCompleted) "☑" else "☐", fontSize = 12.sp, color = if (task.isCompleted) accent else subtleColor)
+                    Spacer(Modifier.width(6.dp))
+                    Text(task.text, fontSize = 12.sp, color = if (task.isCompleted) subtleColor else textColor, modifier = Modifier.weight(1f))
+                    task.dueDate?.let { EditorChip("$it", accent) }
+                    task.dueTime?.let { EditorChip("$it", accent) }
+                    task.reminder?.let { EditorChip("!$it", subtleColor) }
+                    task.priority?.let { p ->
+                        val c = when (p) { 1 -> com.avinal.memos.ui.theme.PriorityP1; 2 -> com.avinal.memos.ui.theme.PriorityP2; else -> com.avinal.memos.ui.theme.PriorityP3 }
+                        EditorChip("p$p", c)
+                    }
+                    task.lists.forEach { EditorChip("#$it", accent) }
+                }
+            }
+        }
+    }
+
     Spacer(Modifier.height(8.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Box {
-            Text(visibility.name.lowercase(), fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable { showVisibilityMenu = true })
-            if (showVisibilityMenu) {
-                AlertDialog(
-                    onDismissRequest = { showVisibilityMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, title = null,
-                    text = {
-                        Column {
-                            MemoVisibility.entries.forEach { vis ->
-                                Text(vis.name.lowercase(), fontSize = 17.sp, color = if (vis == visibility) accent else textColor,
-                                    modifier = Modifier.fillMaxWidth().clickable { onVisibilityChange(vis); showVisibilityMenu = false }.padding(vertical = 10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                Text(visibility.name.lowercase(), fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable { showVisibilityMenu = true })
+                if (showVisibilityMenu) {
+                    AlertDialog(
+                        onDismissRequest = { showVisibilityMenu = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer, title = null,
+                        text = {
+                            Column {
+                                MemoVisibility.entries.forEach { vis ->
+                                    Text(vis.name.lowercase(), fontSize = 17.sp, color = if (vis == visibility) accent else textColor,
+                                        modifier = Modifier.fillMaxWidth().clickable { onVisibilityChange(vis); showVisibilityMenu = false }.padding(vertical = 10.dp))
+                                }
                             }
-                        }
-                    },
-                    confirmButton = {},
-                )
+                        },
+                        confirmButton = {},
+                    )
+                }
+            }
+            Text("add task", fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable {
+                onContentChange(content.let { if (it.isEmpty() || it.endsWith("\n")) it else "$it\n" } + "- [ ] ")
+            })
+            if (isEditingTask) {
+                Text("due", fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable { showDatePicker = true })
+                Text("at", fontSize = 13.sp, color = subtleColor, modifier = Modifier.clickable { showTimePicker = true })
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -244,6 +365,16 @@ private fun InlineEditor(
                 modifier = Modifier.then(if (content.isNotBlank()) Modifier.clickable(onClick = onSave) else Modifier))
         }
     }
+}
+
+@Composable
+private fun EditorChip(label: String, color: Color) {
+    Text(
+        label, fontSize = 10.sp, color = color,
+        modifier = Modifier.padding(start = 4.dp)
+            .background(color.copy(alpha = 0.1f), androidx.compose.foundation.shape.RoundedCornerShape(3.dp))
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
 }
 
 private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")

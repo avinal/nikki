@@ -34,7 +34,6 @@ object ReminderScheduler {
         tasks: List<Task>,
         nowMillis: Long,
         timeZone: TimeZone,
-        alreadyScheduledIds: Set<String> = emptySet(),
         defaultTime: LocalTime = LocalTime(20, 0),
     ): List<ScheduledAlarm> {
         val alarms = mutableListOf<ScheduledAlarm>()
@@ -47,8 +46,6 @@ object ReminderScheduler {
             val effectiveTime = task.dueTime ?: defaultTime
 
             val dueMs = effectiveDate.atTime(effectiveTime).toInstant(timeZone).toEpochMilliseconds()
-
-            println("ReminderScheduler: task=${task.text} effectiveDate=$effectiveDate effectiveTime=$effectiveTime dueMs=$dueMs nowMillis=$nowMillis future=${dueMs > nowMillis}")
 
             // Explicit reminder: fire at dueDateTime - duration
             if (task.reminder != null) {

@@ -1,6 +1,7 @@
 package com.avinal.memos
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -33,21 +34,31 @@ class MainActivity : ComponentActivity() {
         requestBatteryOptimizationExemption()
         scheduleTaskChecker(applicationContext)
 
+        val sharedText = if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            intent.getStringExtra(Intent.EXTRA_TEXT)
+        } else null
+
         enableEdgeToEdge()
         setContent {
             CompositionLocalProvider(LocalAppDependencies provides deps) {
-                App()
+                App(sharedText = sharedText)
             }
         }
     }
 
     private fun requestNotificationPermission() {
+        val perms = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.READ_CALENDAR)
+            perms.add(Manifest.permission.WRITE_CALENDAR)
+        }
+        if (perms.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1001)
         }
     }
 

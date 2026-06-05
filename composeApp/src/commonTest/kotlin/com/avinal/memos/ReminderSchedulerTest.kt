@@ -29,7 +29,7 @@ class ReminderSchedulerTest {
         reminder = reminder, priority = priority)
 
     private fun compute(tasks: List<Task>, now: Long = nowMillis) =
-        ReminderScheduler.computeAlarms(tasks, now, tz, emptySet(), defaultTime)
+        ReminderScheduler.computeAlarms(tasks, now, tz, defaultTime)
 
     @Test fun completedNoAlarms() { assertTrue(compute(listOf(task(completed = true))).isEmpty()) }
     @Test fun noDateNoTimeNoAlarms() { assertTrue(compute(listOf(task(date = null, time = null))).isEmpty()) }
@@ -128,7 +128,7 @@ class ReminderSchedulerTest {
 
     @Test fun customDefaultTime() {
         val alarms = ReminderScheduler.computeAlarms(
-            listOf(task()), nowMillis, tz, emptySet(), LocalTime(9, 0)
+            listOf(task()), nowMillis, tz, LocalTime(9, 0)
         )
         val expected = dueDate.atTime(LocalTime(9, 0)).toInstant(tz).toEpochMilliseconds()
         assertEquals(expected, alarms[0].triggerAtMillis)

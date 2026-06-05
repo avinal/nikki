@@ -127,7 +127,12 @@ class MemoRepository(
             is ApiResult.NetworkError -> {
                 pendingSyncDao?.insert(PendingSyncEntity(
                     memoId = null, action = "CREATE",
-                    payload = """{"content":"${content.replace("\"", "\\\"")}","visibility":"${visibility.toApiString()}"}""",
+                    payload = kotlinx.serialization.json.Json.encodeToString(
+                        kotlinx.serialization.json.JsonObject(mapOf(
+                            "content" to kotlinx.serialization.json.JsonPrimitive(content),
+                            "visibility" to kotlinx.serialization.json.JsonPrimitive(visibility.toApiString()),
+                        ))
+                    ),
                     createdAt = nowMillis(),
                 ))
                 result
@@ -155,14 +160,14 @@ class MemoRepository(
             }
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> {
-                val payloadParts = buildList {
-                    if (content != null) add(""""content":"${content.replace("\"", "\\\"")}"""")
-                    if (visibility != null) add(""""visibility":"${visibility.toApiString()}"""")
-                    if (pinned != null) add(""""pinned":$pinned""")
+                val fields = buildMap<String, kotlinx.serialization.json.JsonElement> {
+                    if (content != null) put("content", kotlinx.serialization.json.JsonPrimitive(content))
+                    if (visibility != null) put("visibility", kotlinx.serialization.json.JsonPrimitive(visibility.toApiString()))
+                    if (pinned != null) put("pinned", kotlinx.serialization.json.JsonPrimitive(pinned))
                 }
                 pendingSyncDao?.insert(PendingSyncEntity(
                     memoId = id, action = "UPDATE",
-                    payload = "{${payloadParts.joinToString(",")}}",
+                    payload = kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.json.JsonObject(fields)),
                     createdAt = nowMillis(),
                 ))
                 result

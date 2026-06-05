@@ -20,18 +20,28 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -45,10 +55,12 @@ import com.avinal.memos.ui.theme.PriorityP1
 import com.avinal.memos.ui.theme.PriorityP2
 import com.avinal.memos.ui.theme.PriorityP3
 import kotlin.time.Clock
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlinx.datetime.daysUntil
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskListScreen(
     deps: AppDependencies,
@@ -61,6 +73,10 @@ fun TaskListScreen(
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
     var selectedTask by remember { mutableStateOf<Task?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
+    var isRefreshing by remember { mutableStateOf(false) }
 
     selectedTask?.let { task ->
         TaskDetailSheet(
@@ -71,6 +87,30 @@ fun TaskListScreen(
         )
     }
 
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = textColor,
+                    actionColor = accent,
+                )
+            }
+        },
+        containerColor = Color.Transparent,
+    ) { padding ->
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            scope.launch {
+                deps.memoRepository.refreshMemos()
+                isRefreshing = false
+            }
+        },
+        modifier = Modifier.padding(padding),
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -187,7 +227,17 @@ fun TaskListScreen(
                             dotColor = dotColor,
                             textColor = textColor,
                             subtleColor = subtleColor,
-                            onToggle = { viewModel.toggleTask(task) },
+                            onToggle = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.toggleTask(task)
+                                scope.launch {
+                                    val label = if (task.isCompleted) "task reopened" else "task completed"
+                                    val result = snackbarHostState.showSnackbar(label, actionLabel = "undo", withDismissAction = true)
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.toggleTask(task)
+                                    }
+                                }
+                            },
                             onClick = { selectedTask = task },
                         )
                     }
@@ -197,11 +247,17 @@ fun TaskListScreen(
             if (grouped.groups.isEmpty() || grouped.groups.all { it.tasks.isEmpty() }) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        Text("no tasks", fontSize = 15.sp, color = subtleColor)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("all clear", fontSize = 17.sp, fontWeight = FontWeight.Light, color = textColor)
+                            Spacer(Modifier.height(4.dp))
+                            Text("tasks from your memos will appear here", fontSize = 13.sp, color = subtleColor)
+                        }
                     }
                 }
             }
         }
+    }
+    }
     }
 }
 

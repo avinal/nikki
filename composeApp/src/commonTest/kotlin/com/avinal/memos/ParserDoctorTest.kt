@@ -116,8 +116,25 @@ class ParserDoctorTest {
     }
 
     @Test fun singleTaskNoDateNotWarned() {
-        // Only 1 task without date should not trigger the combined warning
         val w = TaskParser.validateContent("- [ ] Single task")
         assertTrue(w.none { it.issue.contains("tasks have no due date") })
+    }
+
+    // --- Relative dates no false positives ---
+
+    @Test fun noWarningNextMonday() {
+        assertTrue(TaskParser.validateContent("- [ ] Call next monday 5pm").isEmpty())
+    }
+
+    @Test fun noWarningNextWeek() {
+        assertTrue(TaskParser.validateContent("- [ ] Plan next week").isEmpty())
+    }
+
+    @Test fun noWarningInDays() {
+        assertTrue(TaskParser.validateContent("- [ ] Follow up in 3 days").isEmpty())
+    }
+
+    @Test fun reminderWithNextFriday() {
+        assertTrue(TaskParser.validateContent("- [ ] Deploy next friday !1hr").isEmpty())
     }
 }

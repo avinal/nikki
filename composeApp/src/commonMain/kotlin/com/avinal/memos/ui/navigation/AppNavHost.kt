@@ -20,7 +20,7 @@ import com.avinal.memos.ui.memos.MemoEditorScreen
 private const val ANIM_DURATION = 300
 
 @Composable
-fun AppNavHost(deps: AppDependencies) {
+fun AppNavHost(deps: AppDependencies, sharedText: String? = null) {
     val navController = rememberNavController()
     val isLoggedIn by deps.authRepository.isLoggedIn.collectAsState(initial = false)
 
@@ -63,6 +63,7 @@ fun AppNavHost(deps: AppDependencies) {
         ) {
             MainScreen(
                 deps = deps,
+                sharedText = sharedText,
                 onMemoClick = { memoId -> navController.navigate(Route.MemoDetail(memoId)) },
                 onCreateMemo = { navController.navigate(Route.MemoEditor()) },
                 onLogout = {

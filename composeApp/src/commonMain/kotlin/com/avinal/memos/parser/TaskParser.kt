@@ -16,7 +16,7 @@ object TaskParser {
     private val taskLineRegex = Regex("""^\s*- \[([ xX])]\s+(.*)$""")
 
     private val isoDateRegex = Regex("""\b(\d{4}-\d{2}-\d{2})\b""")
-    private val naturalDateRegex = Regex("""\b(today|tomorrow|yesterday)\b""", RegexOption.IGNORE_CASE)
+    private val naturalDateRegex = Regex("""\b(today|tomorrow|yesterday|next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|in\s+\d+\s*days?|next\s+week)\b""", RegexOption.IGNORE_CASE)
 
     private val time12Regex = Regex("""\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b""", RegexOption.IGNORE_CASE)
     private val time24Regex = Regex("""\b(\d{1,2}):(\d{2})\b""")
@@ -116,10 +116,23 @@ object TaskParser {
         }
         naturalDateRegex.find(text)?.let {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            return when (it.groupValues[1].lowercase()) {
-                "today" -> today
-                "tomorrow" -> today.plus(1, DateTimeUnit.DAY)
-                "yesterday" -> today.plus(-1, DateTimeUnit.DAY)
+            val matched = it.groupValues[1].lowercase().trim()
+            return when {
+                matched == "today" -> today
+                matched == "tomorrow" -> today.plus(1, DateTimeUnit.DAY)
+                matched == "yesterday" -> today.plus(-1, DateTimeUnit.DAY)
+                matched == "next week" -> today.plus(7, DateTimeUnit.DAY)
+                matched.startsWith("in ") -> {
+                    val days = Regex("""\d+""").find(matched)?.value?.toIntOrNull() ?: return null
+                    today.plus(days, DateTimeUnit.DAY)
+                }
+                matched.startsWith("next ") -> {
+                    val dayName = matched.removePrefix("next ").trim()
+                    val targetDow = dayOfWeekFromName(dayName) ?: return null
+                    val todayDow = today.dayOfWeek.ordinal
+                    val diff = (targetDow - todayDow + 7) % 7
+                    today.plus(if (diff == 0) 7 else diff, DateTimeUnit.DAY)
+                }
                 else -> null
             }
         }
@@ -284,6 +297,11 @@ object TaskParser {
         }
 
         return warnings
+    }
+
+    private fun dayOfWeekFromName(name: String): Int? = when (name) {
+        "monday" -> 0; "tuesday" -> 1; "wednesday" -> 2; "thursday" -> 3
+        "friday" -> 4; "saturday" -> 5; "sunday" -> 6; else -> null
     }
 
     private fun cleanTaskText(text: String): String {
