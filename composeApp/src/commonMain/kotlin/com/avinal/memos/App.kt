@@ -9,7 +9,7 @@ import com.avinal.memos.ui.theme.NikkiTheme
 import com.avinal.memos.util.LocalAppDependencies
 
 @Composable
-fun App() {
+fun App(sharedText: String? = null) {
     val deps = LocalAppDependencies.current
 
     setSingletonImageLoaderFactory { context ->
@@ -21,6 +21,6 @@ fun App() {
     }
 
     NikkiTheme {
-        AppNavHost(deps)
+        AppNavHost(deps, sharedText = sharedText)
     }
 }

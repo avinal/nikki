@@ -59,6 +59,7 @@ import com.avinal.memos.ui.theme.LocalAccentColor
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 
 private val pivotTitles = listOf("explore", "memos", "tasks", "settings")
@@ -67,6 +68,7 @@ private const val START_PAGE = 1
 @Composable
 fun MainScreen(
     deps: AppDependencies,
+    sharedText: String? = null,
     onMemoClick: (String) -> Unit,
     onCreateMemo: () -> Unit,
     onLogout: () -> Unit,
@@ -74,6 +76,13 @@ fun MainScreen(
     val pagerState = rememberPagerState(initialPage = START_PAGE, pageCount = { pivotTitles.size })
     val scope = rememberCoroutineScope()
     val accent = LocalAccentColor.current
+
+    val allMemos by deps.memoRepository.observeMemos().collectAsState(initial = emptyList())
+    val urgentTaskCount = remember(allMemos) {
+        val today = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())
+        allMemos.flatMap { memo -> com.avinal.memos.parser.TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
+            .count { !it.isCompleted && it.dueDate != null && it.dueDate <= today }
+    }
     val density = LocalDensity.current
 
     var dateFilter by remember { mutableStateOf<String?>(null) }
@@ -129,19 +138,33 @@ fun MainScreen(
                 val distance = kotlin.math.abs(scrollFraction - index)
                 val alpha = (1f - distance * 0.5f).coerceIn(0.15f, 1f)
                 val isSelected = pagerState.currentPage == index
+                val titleColor = if (isSelected) accent.copy(alpha = alpha)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha * 0.4f)
 
-                Text(
-                    text = title,
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Light,
-                    color = if (isSelected) accent.copy(alpha = alpha)
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha * 0.4f),
-                    maxLines = 1,
+                Row(
                     modifier = Modifier
                         .offset { IntOffset(offsetPx, 0) }
                         .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
                         .padding(vertical = 4.dp),
-                )
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Light,
+                        color = titleColor,
+                        maxLines = 1,
+                    )
+                    if (title == "tasks" && urgentTaskCount > 0) {
+                        Text(
+                            text = "$urgentTaskCount",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = accent.copy(alpha = alpha),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                    }
+                }
             }
         }
 
@@ -180,6 +203,7 @@ fun MainScreen(
                         )
                         1 -> MemoListScreen(
                             deps = deps,
+                            sharedText = sharedText,
                             onMemoClick = onMemoClick,
                             onCreateMemo = onCreateMemo,
                             dateFilter = dateFilter,
