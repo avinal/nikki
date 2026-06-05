@@ -23,6 +23,7 @@ actual fun triggerReminderCheck() {
     val memos = liveMemosProvider?.invoke()
     if (memos != null && memos.isNotEmpty()) {
         DirectAlarmScheduler.scheduleFromMemos(ctx, memos)
+        com.avinal.memos.notifications.CalendarReminderManager.syncTaskReminders(ctx, memos)
     } else {
         runTaskCheckNow(ctx)
     }

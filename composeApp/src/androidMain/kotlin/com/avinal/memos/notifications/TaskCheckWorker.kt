@@ -37,6 +37,8 @@ class TaskCheckWorker(
             scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
         }
 
+        CalendarReminderManager.syncTaskReminders(appContext, memos)
+
         return Result.success()
     }
 
