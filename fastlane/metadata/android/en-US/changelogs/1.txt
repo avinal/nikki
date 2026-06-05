@@ -1,0 +1,12 @@
+Initial release of Nikki.
+
+• Full Memos API integration with offline sync
+• Todoist-style task parsing from markdown checkboxes
+• Due dates, times, priorities, reminders, and tags
+• Parser doctor with inline validation and typo detection
+• 4-channel priority notifications with calendar integration
+• Windows Phone Metro design with 20 accent colors
+• Activity calendar, tag browser, search, archived memos
+• Share intent receiver for quick capture
+• JSON backup/restore
+• 162 tests passing
