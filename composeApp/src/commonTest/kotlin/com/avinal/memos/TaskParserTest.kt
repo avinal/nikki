@@ -2,6 +2,8 @@ package com.avinal.memos
 
 import com.avinal.memos.domain.ReminderUnit
 import com.avinal.memos.parser.TaskParser
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -183,5 +185,70 @@ class TaskParserTest {
         val t = TaskParser.extractTasks("m1", "- [ ] Meet tomorrow 3pm !15min #work")[0]
         assertNotNull(t.dueDate); assertEquals(15, t.dueTime!!.hour)
         assertEquals(15, t.reminder!!.value); assertEquals(ReminderUnit.MIN, t.reminder!!.unit)
+    }
+
+    // --- Relative dates ---
+
+    @Test fun parsesNextWeek() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Plan next week")[0]
+        assertNotNull(t.dueDate)
+    }
+    @Test fun parsesInDays() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Follow up in 3 days")[0]
+        assertNotNull(t.dueDate)
+    }
+    @Test fun parsesIn1Day() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Check in 1 day")[0]
+        assertNotNull(t.dueDate)
+    }
+    @Test fun parsesNextMonday() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Standup next monday")[0]
+        assertNotNull(t.dueDate)
+    }
+    @Test fun parsesNextFriday() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Deploy next friday")[0]
+        assertNotNull(t.dueDate)
+    }
+    @Test fun nextMondayCleaned() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Standup next monday")[0]
+        assertEquals("Standup", t.text)
+    }
+    @Test fun inDaysCleaned() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Follow up in 3 days")[0]
+        assertEquals("Follow up", t.text)
+    }
+    @Test fun nextWeekCleaned() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Plan next week")[0]
+        assertEquals("Plan", t.text)
+    }
+    @Test fun nextDayIsFuture() {
+        val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val t = TaskParser.extractTasks("m1", "- [ ] Do next monday")[0]
+        assertTrue(t.dueDate!! > today)
+    }
+    @Test fun nextWeekIs7DaysAhead() {
+        val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val t = TaskParser.extractTasks("m1", "- [ ] Plan next week")[0]
+        assertEquals(7, today.daysUntil(t.dueDate!!))
+    }
+    @Test fun in5DaysIs5Ahead() {
+        val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val t = TaskParser.extractTasks("m1", "- [ ] Review in 5 days")[0]
+        assertEquals(5, today.daysUntil(t.dueDate!!))
+    }
+
+    // --- Tag inheritance ---
+
+    @Test fun taskLevelTagOverridesMemoTag() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Fix bug #devops", listOf("work"))[0]
+        assertEquals(listOf("devops"), t.lists)
+    }
+    @Test fun noTaskTagInheritsMemoTags() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Fix bug", listOf("work", "urgent"))[0]
+        assertEquals(listOf("work", "urgent"), t.lists)
+    }
+    @Test fun emptyMemoTagsNoInheritance() {
+        val t = TaskParser.extractTasks("m1", "- [ ] Fix bug")[0]
+        assertTrue(t.lists.isEmpty())
     }
 }
