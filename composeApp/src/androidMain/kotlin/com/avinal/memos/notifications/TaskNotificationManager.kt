@@ -28,17 +28,17 @@ object TaskNotificationManager {
         manager.createNotificationChannel(NotificationChannel(CHANNEL_P1, "P1 — Urgent", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "High priority — alarm sound, strong vibration, wakes screen"
             enableVibration(true); vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500)
-            setSound(alarmUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC; setShowBadge(true); setBypassDnd(true)
+            setSound(alarmUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE; setShowBadge(true); setBypassDnd(true)
         })
         manager.createNotificationChannel(NotificationChannel(CHANNEL_P2, "P2 — Medium", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Medium priority — notification sound, vibration"
             enableVibration(true); vibrationPattern = longArrayOf(0, 300, 200, 300)
-            setSound(soundUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC; setShowBadge(true)
+            setSound(soundUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE; setShowBadge(true)
         })
         manager.createNotificationChannel(NotificationChannel(CHANNEL_P3, "P3 — Low", NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = "Low priority — notification sound, short vibration"
             enableVibration(true); vibrationPattern = longArrayOf(0, 200)
-            setSound(soundUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            setSound(soundUri, audioAttr); lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
         manager.createNotificationChannel(NotificationChannel(CHANNEL_DEFAULT, "No Priority", NotificationManager.IMPORTANCE_LOW).apply {
             description = "No priority — silent notification"
@@ -89,7 +89,7 @@ object TaskNotificationManager {
             .setShowWhen(true)
             .setPriority(notifPriority)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setOnlyAlertOnce(false)
             .setContentIntent(pendingOpen)
@@ -99,7 +99,6 @@ object TaskNotificationManager {
 
         when (priority) {
             1 -> {
-                builder.setFullScreenIntent(pendingOpen, true)
                 builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
                 builder.setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
             }

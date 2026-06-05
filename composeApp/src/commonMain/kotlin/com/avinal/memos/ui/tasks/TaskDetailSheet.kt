@@ -41,7 +41,7 @@ import com.avinal.memos.domain.ReminderUnit
 import com.avinal.memos.domain.Task
 import com.avinal.memos.parser.TaskParser
 import com.avinal.memos.ui.theme.LocalAccentColor
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn

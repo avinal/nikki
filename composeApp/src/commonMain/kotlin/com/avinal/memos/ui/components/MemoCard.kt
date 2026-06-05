@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.avinal.memos.ui.components
 
 import androidx.compose.animation.animateContentSize
@@ -236,7 +237,7 @@ private fun InlineEditor(
             confirmButton = {
                 TextButton(onClick = {
                     dateState.selectedDateMillis?.let { ms ->
-                        val d = kotlinx.datetime.Instant.fromEpochMilliseconds(ms)
+                        val d = Instant.fromEpochMilliseconds(ms)
                             .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date
                         onContentChange(content.trimEnd() + " $d")
                     }

@@ -375,7 +375,7 @@ fun MemoListScreen(
                             confirmButton = {
                                 TextButton(onClick = {
                                     dateState.selectedDateMillis?.let { ms ->
-                                        val d = kotlinx.datetime.Instant.fromEpochMilliseconds(ms)
+                                        val d = kotlin.time.Instant.fromEpochMilliseconds(ms)
                                             .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date
                                         val r = composeField.text.trimEnd() + " $d"; composeField = TextFieldValue(r, TextRange(r.length))
                                     }

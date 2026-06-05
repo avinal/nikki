@@ -52,5 +52,8 @@ class AuthRepository(
     suspend fun logout() {
         tokenStore.clear()
         _currentUser.value = null
+        onLogout?.invoke()
     }
+
+    var onLogout: (() -> Unit)? = null
 }

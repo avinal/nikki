@@ -39,7 +39,11 @@ class AppDependencies(
         )
     }
 
-    val authRepository: AuthRepository by lazy { AuthRepository(apiClient, tokenStore) }
+    val authRepository: AuthRepository by lazy {
+        AuthRepository(apiClient, tokenStore).also {
+            it.onLogout = { cachedToken = null; cachedServerUrl = null }
+        }
+    }
     val memoRepository: MemoRepository by lazy {
         MemoRepository(apiClient, database.memoDao()) {
             com.avinal.memos.util.triggerReminderCheck()
