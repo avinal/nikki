@@ -273,27 +273,26 @@ private fun InlineEditor(
     TextField(
         value = content,
         onValueChange = { newText ->
-            // Backspace on empty auto-inserted line: remove it
-            if (newText.length < content.length && content.endsWith("- [ ] ") && newText == content.dropLast(6).trimEnd() + "\n") {
-                onContentChange(newText.trimEnd('\n'))
+            val oldLines = content.lines()
+            val lastLine = oldLines.lastOrNull() ?: ""
+
+            // Backspace on empty auto-inserted task line: remove it
+            if (newText.length < content.length && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                val withoutLast = oldLines.dropLast(1).joinToString("\n")
+                if (newText.trimEnd() == withoutLast.trimEnd()) {
+                    onContentChange(withoutLast)
+                    return@TextField
+                }
+            }
+            // Enter on empty auto-inserted task line: remove it
+            if (newText.length > content.length && newText.endsWith("\n") && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                onContentChange(oldLines.dropLast(1).joinToString("\n") + "\n")
                 return@TextField
             }
-            // Enter on empty auto-inserted line: remove it
-            if (newText.length > content.length && newText.endsWith("\n") && content.endsWith("- [ ] ")) {
-                val lastLine = content.lines().last()
-                if (lastLine.trim() == "- [ ]") {
-                    onContentChange(content.dropLast(lastLine.length + 1).trimEnd('\n') + "\n")
-                    return@TextField
-                }
-            }
             // Auto-checklist: continue task list on enter
-            if (newText.length > content.length && newText.endsWith("\n")) {
-                val beforeNewline = newText.dropLast(1)
-                val lastLine = beforeNewline.lines().lastOrNull() ?: ""
-                if (lastLine.trimStart().startsWith("- [")) {
-                    onContentChange(newText + "- [ ] ")
-                    return@TextField
-                }
+            if (newText.length > content.length && newText.endsWith("\n") && lastLine.trimStart().startsWith("- [") && lastLine.trim() != "- [ ]") {
+                onContentChange(newText + "- [ ] ")
+                return@TextField
             }
             onContentChange(newText)
         },

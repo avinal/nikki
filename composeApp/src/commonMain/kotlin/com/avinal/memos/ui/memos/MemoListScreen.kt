@@ -53,6 +53,8 @@ import com.avinal.memos.domain.MemoVisibility
 import com.avinal.memos.ui.components.MemoCard
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.util.rememberFilePicker
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import kotlinx.coroutines.flow.first
@@ -66,6 +68,7 @@ import kotlinx.datetime.todayIn
 @Composable
 fun MemoListScreen(
     deps: AppDependencies,
+    sharedText: String? = null,
     onMemoClick: (String) -> Unit,
     onCreateMemo: () -> Unit,
     dateFilter: String? = null,
@@ -130,7 +133,7 @@ fun MemoListScreen(
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    var composeField by remember { mutableStateOf(TextFieldValue("")) }
+    var composeField by remember { mutableStateOf(TextFieldValue(sharedText ?: "")) }
     val defaultVis by produceState(MemoVisibility.PRIVATE) {
         deps.tokenStore.defaultVisibility.first().let { value = MemoVisibility.fromApiString(it) }
     }
@@ -139,6 +142,7 @@ fun MemoListScreen(
     var uploadedAttachmentNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var isUploading by remember { mutableStateOf(false) }
     val uploadScope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
 
     val launchFilePicker = rememberFilePicker { pickedFile ->
         isUploading = true
@@ -254,30 +258,28 @@ fun MemoListScreen(
                         onValueChange = { newField ->
                             val newText = newField.text
                             val oldText = composeField.text
-                            // Backspace on empty auto-inserted line: remove it
-                            if (newText.length < oldText.length && oldText.endsWith("- [ ] ") && newText == oldText.dropLast(6).trimEnd() + "\n") {
-                                val cleaned = newText.trimEnd('\n')
-                                composeField = TextFieldValue(cleaned, TextRange(cleaned.length))
+                            val oldLines = oldText.lines()
+                            val lastLine = oldLines.lastOrNull() ?: ""
+
+                            // Backspace on empty auto-inserted task line: remove it
+                            if (newText.length < oldText.length && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                                val withoutLast = oldLines.dropLast(1).joinToString("\n")
+                                if (newText.trimEnd() == withoutLast.trimEnd()) {
+                                    composeField = TextFieldValue(withoutLast, TextRange(withoutLast.length))
+                                    return@TextField
+                                }
+                            }
+                            // Enter on empty auto-inserted task line: remove it and exit task mode
+                            if (newText.length > oldText.length && newText.endsWith("\n") && lastLine.trim() == "- [ ]" && oldLines.size > 1) {
+                                val withoutLast = oldLines.dropLast(1).joinToString("\n") + "\n"
+                                composeField = TextFieldValue(withoutLast, TextRange(withoutLast.length))
                                 return@TextField
                             }
-                            // Enter on empty auto-inserted line: remove it
-                            if (newText.length > oldText.length && newText.endsWith("\n") && oldText.endsWith("- [ ] ")) {
-                                val lastLine = oldText.lines().last()
-                                if (lastLine.trim() == "- [ ]") {
-                                    val cleaned = oldText.dropLast(lastLine.length + 1).trimEnd('\n') + "\n"
-                                    composeField = TextFieldValue(cleaned, TextRange(cleaned.length))
-                                    return@TextField
-                                }
-                            }
-                            // Auto-checklist: if user pressed enter after a task line, auto-insert "- [ ] "
-                            if (newText.length > oldText.length && newText.endsWith("\n")) {
-                                val beforeNewline = newText.dropLast(1)
-                                val lastLine = beforeNewline.lines().lastOrNull() ?: ""
-                                if (lastLine.trimStart().startsWith("- [")) {
-                                    val result = newText + "- [ ] "
-                                    composeField = TextFieldValue(result, TextRange(result.length))
-                                    return@TextField
-                                }
+                            // Auto-checklist: continue task list on enter
+                            if (newText.length > oldText.length && newText.endsWith("\n") && lastLine.trimStart().startsWith("- [") && lastLine.trim() != "- [ ]") {
+                                val result = newText + "- [ ] "
+                                composeField = TextFieldValue(result, TextRange(result.length))
+                                return@TextField
                             }
                             composeField = newField
                         },
@@ -444,9 +446,11 @@ fun MemoListScreen(
                                 modifier = Modifier
                                     .then(
                                         if (composeField.text.isNotBlank()) Modifier.clickable {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                             viewModel.createMemo(composeField.text, composeVisibility, uploadedAttachmentNames)
                                             composeField = TextFieldValue("")
                                             uploadedAttachmentNames = emptyList()
+                                            uploadScope.launch { listState.animateScrollToItem(0) }
                                         } else Modifier
                                     )
                                     .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -489,7 +493,16 @@ fun MemoListScreen(
             } else if (memos.isEmpty() && !uiState.isRefreshing) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        Text(if (showArchived) "no archived memos" else "no memos yet", fontSize = 15.sp, color = subtleColor)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                if (showArchived) "no archived memos" else "nothing here yet",
+                                fontSize = 17.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            if (!showArchived) {
+                                Spacer(Modifier.height(4.dp))
+                                Text("tap above to write your first memo", fontSize = 13.sp, color = subtleColor)
+                            }
+                        }
                     }
                 }
             }
