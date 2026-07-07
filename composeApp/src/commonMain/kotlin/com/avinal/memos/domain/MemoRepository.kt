@@ -5,6 +5,7 @@ import com.avinal.memos.api.MemosApiClient
 import com.avinal.memos.api.model.toDomain
 import com.avinal.memos.db.dao.MemoDao
 import com.avinal.memos.db.dao.PendingSyncDao
+import com.avinal.memos.db.entity.MemoEntity
 import com.avinal.memos.db.entity.PendingSyncEntity
 import com.avinal.memos.db.entity.toEntity
 import com.avinal.memos.db.entity.toDomain
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -125,16 +128,43 @@ class MemoRepository(
             }
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> {
-                pendingSyncDao?.insert(PendingSyncEntity(
-                    memoId = null, action = "CREATE",
-                    payload = kotlinx.serialization.json.Json.encodeToString(
+                val dao = pendingSyncDao
+                if (dao != null) {
+                    val payload = Json.encodeToString(
                         kotlinx.serialization.json.JsonObject(mapOf(
                             "content" to kotlinx.serialization.json.JsonPrimitive(content),
                             "visibility" to kotlinx.serialization.json.JsonPrimitive(visibility.toApiString()),
                         ))
-                    ),
-                    createdAt = nowMillis(),
-                ))
+                    )
+                    if (dao.findCreateByPayload(payload) == null) {
+                        val syncId = dao.insert(PendingSyncEntity(
+                            memoId = null, action = "CREATE",
+                            payload = payload,
+                            createdAt = nowMillis(),
+                        ))
+                        val now = nowMillis()
+                        memoDao.upsert(MemoEntity(
+                            id = "local-$syncId",
+                            uid = "",
+                            content = content,
+                            visibility = visibility.toApiString(),
+                            pinned = false,
+                            state = "NORMAL",
+                            createTime = now,
+                            updateTime = now,
+                            displayTime = now,
+                            creator = "",
+                            hasTaskList = content.contains("- ["),
+                            hasIncompleteTasks = content.contains("- [ ]"),
+                            title = "",
+                            tags = "[]",
+                            snippet = content.take(200),
+                            cachedAt = now,
+                            pendingSyncId = syncId,
+                        ))
+                    }
+                }
+                isOffline = true
                 result
             }
         }
@@ -160,16 +190,21 @@ class MemoRepository(
             }
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> {
-                val fields = buildMap<String, kotlinx.serialization.json.JsonElement> {
-                    if (content != null) put("content", kotlinx.serialization.json.JsonPrimitive(content))
-                    if (visibility != null) put("visibility", kotlinx.serialization.json.JsonPrimitive(visibility.toApiString()))
-                    if (pinned != null) put("pinned", kotlinx.serialization.json.JsonPrimitive(pinned))
+                val dao = pendingSyncDao
+                if (dao != null) {
+                    dao.deleteByMemoIdAndAction(id, "UPDATE")
+                    val fields = buildMap<String, kotlinx.serialization.json.JsonElement> {
+                        if (content != null) put("content", kotlinx.serialization.json.JsonPrimitive(content))
+                        if (visibility != null) put("visibility", kotlinx.serialization.json.JsonPrimitive(visibility.toApiString()))
+                        if (pinned != null) put("pinned", kotlinx.serialization.json.JsonPrimitive(pinned))
+                    }
+                    dao.insert(PendingSyncEntity(
+                        memoId = id, action = "UPDATE",
+                        payload = Json.encodeToString(kotlinx.serialization.json.JsonObject(fields)),
+                        createdAt = nowMillis(),
+                    ))
                 }
-                pendingSyncDao?.insert(PendingSyncEntity(
-                    memoId = id, action = "UPDATE",
-                    payload = kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.json.JsonObject(fields)),
-                    createdAt = nowMillis(),
-                ))
+                isOffline = true
                 result
             }
         }
@@ -244,12 +279,21 @@ class MemoRepository(
                     val json = Json.parseToJsonElement(op.payload).jsonObject
                     val content = json["content"]?.jsonPrimitive?.content ?: continue
                     val vis = json["visibility"]?.jsonPrimitive?.content ?: "PRIVATE"
-                    apiClient.createMemo(content, vis) is ApiResult.Success
+                    val created = apiClient.createMemo(content, vis) is ApiResult.Success
+                    if (created) memoDao.deleteById("local-${op.id}")
+                    created
                 }
                 "UPDATE" -> {
                     val json = Json.parseToJsonElement(op.payload).jsonObject
                     val content = json["content"]?.jsonPrimitive?.content
-                    apiClient.updateMemo(op.memoId ?: continue, content = content) is ApiResult.Success
+                    val visibility = json["visibility"]?.jsonPrimitive?.content
+                    val pinned = json["pinned"]?.jsonPrimitive?.booleanOrNull
+                    apiClient.updateMemo(
+                        op.memoId ?: continue,
+                        content = content,
+                        visibility = visibility,
+                        pinned = pinned,
+                    ) is ApiResult.Success
                 }
                 "DELETE" -> apiClient.deleteMemo(op.memoId ?: continue) is ApiResult.Success
                 else -> false

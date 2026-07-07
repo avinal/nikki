@@ -21,6 +21,7 @@ data class Memo(
     val attachments: List<Attachment> = emptyList(),
     val reactions: List<Reaction> = emptyList(),
     val commentCount: Int = 0,
+    val pendingSyncId: Long? = null,
 )
 
 data class Attachment(

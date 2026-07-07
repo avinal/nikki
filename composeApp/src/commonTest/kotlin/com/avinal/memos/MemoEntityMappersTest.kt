@@ -7,6 +7,7 @@ import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -74,5 +75,51 @@ class MemoEntityMappersTest {
         assertEquals(2000000L, entity.updateTime)
         val restored = entity.toDomain()
         assertEquals(memo.createTime, restored.createTime)
+    }
+
+    @Test
+    fun pendingSyncIdRoundTrips() {
+        val memo = makeMemo().copy(pendingSyncId = 42L)
+        val entity = memo.toEntity(0)
+        assertEquals(42L, entity.pendingSyncId)
+        val restored = entity.toDomain()
+        assertEquals(42L, restored.pendingSyncId)
+    }
+
+    @Test
+    fun pendingSyncIdNullByDefault() {
+        val memo = makeMemo()
+        assertNull(memo.pendingSyncId)
+        val entity = memo.toEntity(0)
+        assertNull(entity.pendingSyncId)
+        val restored = entity.toDomain()
+        assertNull(restored.pendingSyncId)
+    }
+
+    @Test
+    fun localMemoEntityHasSyntheticId() {
+        val entity = MemoEntity(
+            id = "local-7",
+            uid = "",
+            content = "offline memo",
+            visibility = "PRIVATE",
+            pinned = false,
+            state = "NORMAL",
+            createTime = 1000L,
+            updateTime = 1000L,
+            displayTime = 1000L,
+            creator = "",
+            hasTaskList = false,
+            hasIncompleteTasks = false,
+            title = "",
+            tags = "[]",
+            snippet = "offline memo",
+            cachedAt = 1000L,
+            pendingSyncId = 7L,
+        )
+        val domain = entity.toDomain()
+        assertEquals("local-7", domain.id)
+        assertEquals(7L, domain.pendingSyncId)
+        assertEquals("offline memo", domain.content)
     }
 }

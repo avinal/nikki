@@ -24,4 +24,5 @@ data class MemoEntity(
     val reactionsJson: String = "[]",
     val commentCount: Int = 0,
     val cachedAt: Long,
+    val pendingSyncId: Long? = null,
 )
