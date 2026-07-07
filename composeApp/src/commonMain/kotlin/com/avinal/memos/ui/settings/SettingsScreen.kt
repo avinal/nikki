@@ -28,15 +28,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +46,7 @@ import com.avinal.memos.AppDependencies
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.ui.theme.MetroTheme
 import com.avinal.memos.ui.theme.WpAccentColors
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -58,7 +60,12 @@ fun SettingsScreen(
     val currentTheme by viewModel.currentTheme.collectAsState()
     val currentAccent by viewModel.currentAccent.collectAsState()
     val accent = LocalAccentColor.current
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -75,18 +82,75 @@ fun SettingsScreen(
         )
     }
 
+    if (showClearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheDialog = false },
+            title = { Text("clear local cache?") },
+            text = { Text("all memos will be re-fetched from the server.", color = subtleColor) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearCacheDialog = false
+                    scope.launch {
+                        deps.memoRepository.clearCache()
+                        deps.memoRepository.refreshMemos()
+                    }
+                }) { Text("clear", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheDialog = false }) { Text("cancel") }
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 24.dp),
     ) {
-        SectionHeader("account")
-        SettingsItem("server", serverUrl ?: "not connected")
-        currentUser?.let { user ->
-            SettingsItem("username", user.username)
-            if (user.nickname.isNotEmpty()) SettingsItem("name", user.nickname)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AppLogo(size = 96f)
+            Column {
+                Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = textColor)
+                Text("v1.0.0", fontSize = 12.sp, color = subtleColor)
+                Spacer(Modifier.height(4.dp))
+                Text("a memos client with todoist-style tasks", fontSize = 13.sp, color = subtleColor)
+                Spacer(Modifier.height(2.dp))
+                Text("by avinal kumar", fontSize = 12.sp, color = subtleColor)
+            }
         }
+        Text(
+            "report issues",
+            fontSize = 13.sp,
+            color = accent,
+            modifier = Modifier
+                .clickable { uriHandler.openUri("https://github.com/avinal/nikki/issues") }
+                .padding(vertical = 4.dp),
+        )
+
+        Spacer(Modifier.height(24.dp))
+        SectionHeader("account")
+
+        currentUser?.let { user ->
+            Text(user.username, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+            if (user.nickname.isNotEmpty()) {
+                Text(user.nickname, fontSize = 14.sp, color = subtleColor)
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+        Text(serverUrl ?: "not connected", fontSize = 13.sp, color = subtleColor)
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "switch server",
+            fontSize = 14.sp, color = accent,
+            modifier = Modifier.clickable { showLogoutDialog = true }.padding(vertical = 4.dp),
+        )
 
         Spacer(Modifier.height(24.dp))
         SectionHeader("accent color")
@@ -104,7 +168,7 @@ fun SettingsScreen(
                         .clip(CircleShape)
                         .background(ac.color)
                         .then(
-                            if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                            if (isSelected) Modifier.border(3.dp, textColor, CircleShape)
                             else Modifier
                         )
                         .clickable { viewModel.setAccentColor(ac.name) },
@@ -123,7 +187,7 @@ fun SettingsScreen(
                     text = theme.label,
                     fontSize = 15.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isSelected) accent else subtleColor,
                     modifier = Modifier.clickable { viewModel.setTheme(theme) },
                 )
             }
@@ -134,13 +198,13 @@ fun SettingsScreen(
         Spacer(Modifier.height(6.dp))
 
         val defaultVis by viewModel.defaultVisibility.collectAsState()
-        SettingToggle("default visibility", defaultVis.lowercase(), accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+        SettingToggle("default visibility", defaultVis.lowercase(), accent, subtleColor) {
             val next = when (defaultVis) { "PRIVATE" -> "PROTECTED"; "PROTECTED" -> "PUBLIC"; else -> "PRIVATE" }
             viewModel.setDefaultVisibility(next)
         }
 
         val defaultReminder by viewModel.defaultReminder.collectAsState()
-        SettingToggle("default reminder", defaultReminder.ifEmpty { "none" }, accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+        SettingToggle("default reminder", defaultReminder.ifEmpty { "none" }, accent, subtleColor) {
             val options = listOf("", "15min", "30min", "1hr", "1day")
             val idx = options.indexOf(defaultReminder)
             viewModel.setDefaultReminder(options[(idx + 1) % options.size])
@@ -148,17 +212,17 @@ fun SettingsScreen(
 
         val weekStart by viewModel.weekStartDay.collectAsState()
         val dayNames = listOf("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
-        SettingToggle("week starts on", dayNames[weekStart], accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+        SettingToggle("week starts on", dayNames[weekStart], accent, subtleColor) {
             viewModel.setWeekStartDay((weekStart + 1) % 7)
         }
 
         val syncInterval by viewModel.syncInterval.collectAsState()
-        SettingToggle("auto sync", "${syncInterval} min", accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+        SettingToggle("auto sync", "${syncInterval} min", accent, subtleColor) {
             val options = listOf(1, 2, 5, 10, 15, 30, 60)
             val idx = options.indexOf(syncInterval)
             viewModel.setSyncInterval(options[(idx + 1) % options.size])
         }
-        Text("how often to fetch from server", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("how often to fetch from server", fontSize = 12.sp, color = subtleColor)
 
         Spacer(Modifier.height(24.dp))
         SectionHeader("notifications")
@@ -170,22 +234,22 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("task reminders", fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+            Text("task reminders", fontSize = 15.sp, color = textColor)
             Text(
                 if (notificationsOn) "on" else "off",
                 fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                color = if (notificationsOn) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (notificationsOn) accent else subtleColor,
             )
         }
-        Text("get notified when tasks are due or overdue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("get notified when tasks are due or overdue", fontSize = 12.sp, color = subtleColor)
 
         val defaultNotifyTime by viewModel.defaultNotifyTime.collectAsState()
-        SettingToggle("default notify time", defaultNotifyTime, accent, MaterialTheme.colorScheme.onSurfaceVariant) {
+        SettingToggle("default notify time", defaultNotifyTime, accent, subtleColor) {
             val options = listOf("08:00", "09:00", "12:00", "17:00", "18:00", "20:00", "21:00")
             val idx = options.indexOf(defaultNotifyTime)
             viewModel.setDefaultNotifyTime(options[(idx + 1) % options.size])
         }
-        Text("when a task has a date but no time", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("when a task has a date but no time", fontSize = 12.sp, color = subtleColor)
 
         Text(
             "check reminders now",
@@ -196,63 +260,15 @@ fun SettingsScreen(
         )
 
         Spacer(Modifier.height(24.dp))
-        SectionHeader("backup")
+        SectionHeader("data")
         Spacer(Modifier.height(6.dp))
 
-        var backupStatus by remember { mutableStateOf("") }
-
-        val saveFile = com.avinal.memos.util.rememberFileSaver { success ->
-            backupStatus = if (success) "backup exported" else "export failed"
-        }
-        val loadFile = com.avinal.memos.util.rememberFileLoader { json ->
-            viewModel.importFromJson(json) { count ->
-                backupStatus = if (count >= 0) "$count memos imported" else "invalid backup file"
-            }
-        }
-
         Text(
-            "export backup",
+            "clear local cache",
             fontSize = 15.sp, color = accent,
-            modifier = Modifier.clickable {
-                viewModel.getExportJson { json ->
-                    saveFile("nikki-backup.json", json)
-                }
-            }.padding(vertical = 6.dp),
+            modifier = Modifier.clickable { showClearCacheDialog = true }.padding(vertical = 6.dp),
         )
-        Text(
-            "import backup",
-            fontSize = 15.sp, color = accent,
-            modifier = Modifier.clickable { loadFile() }.padding(vertical = 6.dp),
-        )
-        if (backupStatus.isNotEmpty()) {
-            Text(backupStatus, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-        }
-
-        Spacer(Modifier.height(36.dp))
-        SectionHeader("about")
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            AppLogo(size = 96f)
-            Column {
-                Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onBackground)
-                Text("v1.0.0", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                Text("a memos client with todoist-style tasks", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(2.dp))
-                Text("by avinal kumar", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "report issues at github.com/avinal/nikki",
-            fontSize = 12.sp,
-            color = accent,
-        )
+        Text("re-fetch all memos from server", fontSize = 12.sp, color = subtleColor)
 
         Spacer(Modifier.height(36.dp))
 
@@ -274,14 +290,6 @@ private fun SectionHeader(text: String) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(bottom = 6.dp),
     )
-}
-
-@Composable
-private fun SettingsItem(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
-    }
 }
 
 @Composable
@@ -332,7 +340,7 @@ private fun DrawScope.drawAnnularSector(
 }
 
 @Composable
-private fun SettingToggle(label: String, value: String, accent: androidx.compose.ui.graphics.Color, subtleColor: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+private fun SettingToggle(label: String, value: String, accent: Color, subtleColor: Color, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

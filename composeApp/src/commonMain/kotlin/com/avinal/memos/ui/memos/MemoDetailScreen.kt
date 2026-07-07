@@ -78,7 +78,7 @@ fun MemoDetailScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("← back", fontSize = 14.sp, color = accent, modifier = Modifier.clickable(onClick = onBack))
+            Text("back", fontSize = 14.sp, color = accent, modifier = Modifier.clickable(onClick = onBack))
             Text("edit", fontSize = 14.sp, color = accent, modifier = Modifier.clickable(onClick = onEdit))
         }
 
@@ -117,6 +117,7 @@ fun MemoDetailScreen(
                     MarkdownText(
                         markdown = memo!!.content,
                         onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(lineIndex, checked) },
+                        linkPreviewFetcher = deps.linkPreviewFetcher,
                     )
 
                     if (memo!!.attachments.any { it.isImage } && serverUrl.isNotEmpty()) {

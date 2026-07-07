@@ -8,9 +8,12 @@ import com.avinal.memos.domain.Task
 import com.avinal.memos.parser.ParseWarning
 import com.avinal.memos.parser.TaskParser
 import kotlin.time.Clock
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -55,6 +58,9 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
     private val _filterState = MutableStateFlow(TaskFilterState())
     val filterState: StateFlow<TaskFilterState> = _filterState.asStateFlow()
+
+    private val _allTasksDone = MutableSharedFlow<String>()
+    val allTasksDone: SharedFlow<String> = _allTasksDone.asSharedFlow()
 
     private val _collapsedGroups = MutableStateFlow<Set<String>>(emptySet())
 
@@ -220,8 +226,16 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
             val newContent = TaskParser.toggleTaskInContent(memo.content, task)
             if (newContent != memo.content) {
                 memoRepository.updateMemo(task.memoId, content = newContent)
+                val updated = TaskParser.extractTasks(task.memoId, newContent, memo.tags)
+                if (updated.isNotEmpty() && updated.all { it.isCompleted }) {
+                    _allTasksDone.emit(task.memoId)
+                }
             }
         }
+    }
+
+    fun archiveMemo(memoId: String) {
+        viewModelScope.launch { memoRepository.archiveMemo(memoId) }
     }
 
     fun updateTaskInMemo(task: Task, newLine: String) {

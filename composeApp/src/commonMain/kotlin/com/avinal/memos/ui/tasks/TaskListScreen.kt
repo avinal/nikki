@@ -31,6 +31,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +78,15 @@ fun TaskListScreen(
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     var isRefreshing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.allTasksDone.collect { memoId ->
+            val result = snackbarHostState.showSnackbar("all tasks done", actionLabel = "archive", withDismissAction = true)
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.archiveMemo(memoId)
+            }
+        }
+    }
 
     selectedTask?.let { task ->
         TaskDetailSheet(

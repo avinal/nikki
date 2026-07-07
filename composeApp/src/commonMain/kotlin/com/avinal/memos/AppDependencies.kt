@@ -1,6 +1,7 @@
 package com.avinal.memos
 
 import com.avinal.memos.api.HttpClientFactory
+import com.avinal.memos.api.LinkPreviewFetcher
 import com.avinal.memos.api.MemosApiClient
 import com.avinal.memos.db.MemosDatabase
 import com.avinal.memos.db.createPlatformDatabase
@@ -37,6 +38,15 @@ class AppDependencies(
             httpClient = httpClient,
             baseUrlProvider = { cachedServerUrl ?: "" },
         )
+    }
+
+    val linkPreviewFetcher: LinkPreviewFetcher by lazy {
+        LinkPreviewFetcher(io.ktor.client.HttpClient {
+            install(io.ktor.client.plugins.HttpTimeout) {
+                requestTimeoutMillis = 5_000
+                connectTimeoutMillis = 3_000
+            }
+        })
     }
 
     val authRepository: AuthRepository by lazy {

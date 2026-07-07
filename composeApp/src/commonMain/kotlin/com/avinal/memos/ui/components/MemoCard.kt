@@ -66,6 +66,7 @@ fun MemoCard(
     onReact: ((String) -> Unit)? = null,
     onTaskToggle: ((Int, Boolean) -> Unit)? = null,
     onRestore: (() -> Unit)? = null,
+    linkPreviewFetcher: com.avinal.memos.api.LinkPreviewFetcher? = null,
 ) {
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -147,6 +148,10 @@ fun MemoCard(
                     Spacer(Modifier.width(8.dp))
                     Text("${memo.commentCount} comment${if (memo.commentCount > 1) "s" else ""}", fontSize = 12.sp, color = subtleColor)
                 }
+                if (memo.pendingSyncId != null) {
+                    Spacer(Modifier.weight(1f))
+                    Text("unsynced", fontSize = 12.sp, color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), fontWeight = FontWeight.SemiBold)
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -171,6 +176,7 @@ fun MemoCard(
                         markdown = displayContent,
                         modifier = Modifier.fillMaxWidth(),
                         onTaskToggle = onTaskToggle,
+                        linkPreviewFetcher = linkPreviewFetcher,
                     )
                 }
 
@@ -197,7 +203,7 @@ fun MemoCard(
 
         Spacer(
             Modifier.fillMaxWidth().height(1.dp).padding(start = 24.dp)
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                .background(accent.copy(alpha = 0.25f))
         )
     }
 }

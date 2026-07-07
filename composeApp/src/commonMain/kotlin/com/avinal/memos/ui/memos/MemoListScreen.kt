@@ -20,6 +20,11 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -143,6 +148,16 @@ fun MemoListScreen(
     var isUploading by remember { mutableStateOf(false) }
     val uploadScope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.allTasksDone.collect { memoId ->
+            val result = snackbarHostState.showSnackbar("all tasks done", actionLabel = "archive", withDismissAction = true)
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.archiveMemo(memoId)
+            }
+        }
+    }
 
     val launchFilePicker = rememberFilePicker { pickedFile ->
         isUploading = true
@@ -193,7 +208,20 @@ fun MemoListScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = textColor,
+                    actionColor = accent,
+                )
+            }
+        },
+        containerColor = Color.Transparent,
+    ) { scaffoldPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(scaffoldPadding)) {
         if (hasFilter) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
@@ -539,11 +567,13 @@ fun MemoListScreen(
                         },
                         onReact = { emoji -> viewModel.reactToMemo(memo.id, emoji) },
                         onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(memo.id, lineIndex, checked) },
+                        linkPreviewFetcher = deps.linkPreviewFetcher,
                     )
                 }
             }
         }
         }
+    }
     }
 }
 

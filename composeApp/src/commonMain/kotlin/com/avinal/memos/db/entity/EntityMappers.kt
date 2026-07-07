@@ -49,6 +49,7 @@ fun MemoEntity.toDomain(): Memo = Memo(
     attachments = deserializeAttachments(attachmentsJson),
     reactions = deserializeReactions(reactionsJson),
     commentCount = commentCount,
+    pendingSyncId = pendingSyncId,
 )
 
 fun Memo.toEntity(cachedAt: Long): MemoEntity = MemoEntity(
@@ -71,6 +72,7 @@ fun Memo.toEntity(cachedAt: Long): MemoEntity = MemoEntity(
     reactionsJson = serializeReactions(reactions),
     commentCount = commentCount,
     cachedAt = cachedAt,
+    pendingSyncId = pendingSyncId,
 )
 
 private fun serializeTags(tags: List<String>): String =
