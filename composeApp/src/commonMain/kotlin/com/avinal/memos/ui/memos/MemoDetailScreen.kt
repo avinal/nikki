@@ -117,6 +117,7 @@ fun MemoDetailScreen(
                     MarkdownText(
                         markdown = memo!!.content,
                         onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(lineIndex, checked) },
+                        linkPreviewFetcher = deps.linkPreviewFetcher,
                     )
 
                     if (memo!!.attachments.any { it.isImage } && serverUrl.isNotEmpty()) {

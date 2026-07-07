@@ -37,6 +37,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.avinal.memos.api.LinkPreviewFetcher
 import com.avinal.memos.ui.theme.LocalAccentColor
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -45,6 +46,7 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     onTaskToggle: ((lineIndex: Int, checked: Boolean) -> Unit)? = null,
+    linkPreviewFetcher: LinkPreviewFetcher? = null,
 ) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -128,6 +130,11 @@ fun MarkdownText(
                         }
                     } else {
                         ParagraphBlock(line, textColor, accent)
+                    }
+                    if (linkPreviewFetcher != null) {
+                        urlRegex.find(line)?.value?.let { url ->
+                            LinkPreviewCard(url = url, fetcher = linkPreviewFetcher)
+                        }
                     }
                 }
             }
@@ -371,50 +378,67 @@ private val strikethroughRegex = Regex("""~~(.+?)~~""")
 private val codeRegex = Regex("""`(.+?)`""")
 private val linkRegex = Regex("""\[(.+?)]\((.+?)\)""")
 private val urlRegex = Regex("""https?://\S+""")
+private val emailRegex = Regex("""[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}""")
+private val phoneRegex = Regex("""(?<!\w)(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}(?!\w)""")
 private val inlineTagRegex = Regex("""#(\w+)""")
+
+private const val TAG_BOLD_ITALIC = "bold_italic"
+private const val TAG_BOLD = "bold"
+private const val TAG_STRIKE = "strike"
+private const val TAG_ITALIC = "italic"
+private const val TAG_CODE = "code"
+private const val TAG_LINK = "link"
+private const val TAG_URL = "url"
+private const val TAG_EMAIL = "email"
+private const val TAG_PHONE = "phone"
+
+private val inlineRegexes = listOf(
+    TAG_BOLD_ITALIC to boldItalicRegex,
+    TAG_BOLD_ITALIC to boldItalicUnderRegex,
+    TAG_BOLD to boldRegex,
+    TAG_BOLD to boldUnderRegex,
+    TAG_STRIKE to strikethroughRegex,
+    TAG_ITALIC to italicRegex,
+    TAG_ITALIC to italicUnderRegex,
+    TAG_CODE to codeRegex,
+    TAG_LINK to linkRegex,
+    TAG_URL to urlRegex,
+    TAG_EMAIL to emailRegex,
+    TAG_PHONE to phoneRegex,
+)
 
 private fun parseInlineFormatting(text: String, textColor: Color, accent: Color): AnnotatedString = buildAnnotatedString {
     var remaining = text
     while (remaining.isNotEmpty()) {
-        val matches = listOfNotNull(
-            boldItalicRegex.find(remaining),
-            boldItalicUnderRegex.find(remaining),
-            boldRegex.find(remaining),
-            boldUnderRegex.find(remaining),
-            strikethroughRegex.find(remaining),
-            italicRegex.find(remaining),
-            italicUnderRegex.find(remaining),
-            codeRegex.find(remaining),
-            linkRegex.find(remaining),
-            urlRegex.find(remaining),
-        )
-
-        val firstMatch = matches.minByOrNull { it.range.first }
-
-        if (firstMatch == null) {
+        val tagged = inlineRegexes.mapNotNull { (tag, regex) -> regex.find(remaining)?.let { tag to it } }
+        val (tag, firstMatch) = tagged.minByOrNull { it.second.range.first } ?: run {
             withStyle(SpanStyle(color = textColor)) { append(remaining) }
             break
         }
 
         withStyle(SpanStyle(color = textColor)) { append(remaining.substring(0, firstMatch.range.first)) }
-
-        val matchedRegex = matches.first { it.range == firstMatch.range }
         val inner = if (firstMatch.groupValues.size > 1) firstMatch.groupValues[1] else firstMatch.value
 
-        when {
-            matchedRegex.value.startsWith("http") ->
+        when (tag) {
+            TAG_EMAIL ->
+                withLink(LinkAnnotation.Url("mailto:${firstMatch.value}", TextLinkStyles(SpanStyle(color = accent)))) { append(firstMatch.value) }
+            TAG_PHONE -> {
+                val digits = firstMatch.value.filter { it.isDigit() || it == '+' }
+                withLink(LinkAnnotation.Url("tel:$digits", TextLinkStyles(SpanStyle(color = accent)))) { append(firstMatch.value) }
+            }
+            TAG_URL ->
                 withLink(LinkAnnotation.Url(firstMatch.value, TextLinkStyles(SpanStyle(color = accent)))) { append(firstMatch.value) }
-            matchedRegex.value.startsWith("***") || matchedRegex.value.startsWith("___") ->
+            TAG_BOLD_ITALIC ->
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("**") || matchedRegex.value.startsWith("__") ->
+            TAG_BOLD ->
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("~~") ->
+            TAG_STRIKE ->
                 withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough, color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("*") || matchedRegex.value.startsWith("_") ->
+            TAG_ITALIC ->
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("`") ->
+            TAG_CODE ->
                 withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, background = accent.copy(alpha = 0.1f), color = textColor)) { append(inner) }
-            matchedRegex.value.startsWith("[") -> {
+            TAG_LINK -> {
                 val url = if (firstMatch.groupValues.size > 2) firstMatch.groupValues[2] else ""
                 if (url.startsWith("http")) {
                     withLink(LinkAnnotation.Url(url, TextLinkStyles(SpanStyle(color = accent)))) { append(inner) }
