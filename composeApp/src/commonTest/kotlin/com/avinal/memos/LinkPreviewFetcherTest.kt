@@ -159,4 +159,49 @@ class LinkPreviewFetcherTest {
         assertNotNull(preview)
         assertEquals("Standard Order", preview.title)
     }
+
+    @Test
+    fun extractsDomainWithoutPath() {
+        val html = """<html><head><meta property="og:title" content="Title"></head></html>"""
+        val preview = LinkPreviewFetcher.parseOpenGraph("https://example.com", html)
+        assertNotNull(preview)
+        assertEquals("example.com", preview.siteName)
+    }
+
+    @Test
+    fun extractsDomainWithPort() {
+        val html = """<html><head><meta property="og:title" content="Title"></head></html>"""
+        val preview = LinkPreviewFetcher.parseOpenGraph("https://example.com:8080/page", html)
+        assertNotNull(preview)
+        assertEquals("example.com:8080", preview.siteName)
+    }
+
+    @Test
+    fun handlesImageUrlCorrectly() {
+        val html = """
+            <html><head>
+            <meta property="og:title" content="Title">
+            <meta property="og:image" content="https://cdn.example.com/img.jpg">
+            </head></html>
+        """.trimIndent()
+        val preview = LinkPreviewFetcher.parseOpenGraph("https://example.com", html)
+        assertNotNull(preview)
+        assertEquals("https://cdn.example.com/img.jpg", preview.imageUrl)
+    }
+
+    @Test
+    fun nullImageWhenNotProvided() {
+        val html = """<html><head><meta property="og:title" content="Title"></head></html>"""
+        val preview = LinkPreviewFetcher.parseOpenGraph("https://example.com", html)
+        assertNotNull(preview)
+        assertNull(preview.imageUrl)
+    }
+
+    @Test
+    fun nullDescriptionWhenNotProvided() {
+        val html = """<html><head><meta property="og:title" content="Title"></head></html>"""
+        val preview = LinkPreviewFetcher.parseOpenGraph("https://example.com", html)
+        assertNotNull(preview)
+        assertNull(preview.description)
+    }
 }

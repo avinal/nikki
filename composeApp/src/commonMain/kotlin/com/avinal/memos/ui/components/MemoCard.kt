@@ -203,7 +203,7 @@ fun MemoCard(
 
         Spacer(
             Modifier.fillMaxWidth().height(1.dp).padding(start = 24.dp)
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                .background(accent.copy(alpha = 0.25f))
         )
     }
 }

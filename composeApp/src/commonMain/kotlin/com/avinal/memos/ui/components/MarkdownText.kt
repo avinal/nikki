@@ -131,13 +131,15 @@ fun MarkdownText(
                     } else {
                         ParagraphBlock(line, textColor, accent)
                     }
-                    if (linkPreviewFetcher != null) {
-                        urlRegex.find(line)?.value?.let { url ->
-                            LinkPreviewCard(url = url, fetcher = linkPreviewFetcher)
-                        }
-                    }
                 }
             }
+
+            if (linkPreviewFetcher != null && !inCodeBlock) {
+                urlRegex.find(line)?.value?.let { url ->
+                    LinkPreviewCard(url = url, fetcher = linkPreviewFetcher)
+                }
+            }
+
             lineIndex++
         }
 

@@ -3,13 +3,11 @@ package com.avinal.memos.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.avinal.memos.api.LinkPreviewFetcher
 import com.avinal.memos.domain.LinkPreview
-import com.avinal.memos.ui.theme.LocalAccentColor
 
 @Composable
 fun LinkPreviewCard(
@@ -53,25 +50,26 @@ fun LinkPreviewCard(
     val uriHandler = LocalUriHandler.current
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { uriHandler.openUri(url) }
-            .padding(10.dp),
+            .clickable { uriHandler.openUri(url) },
     ) {
         p.imageUrl?.let { imageUrl ->
             AsyncImage(
                 model = imageUrl,
                 contentDescription = null,
-                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp)
+                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
+                contentScale = ContentScale.FillWidth,
             )
-            Spacer(Modifier.width(10.dp))
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.padding(10.dp)) {
             p.siteName?.let {
                 Text(it, fontSize = 11.sp, color = subtleColor, maxLines = 1)
                 Spacer(Modifier.height(2.dp))
