@@ -78,10 +78,13 @@ fun MainScreen(
     val accent = LocalAccentColor.current
 
     val allMemos by deps.memoRepository.observeMemos().collectAsState(initial = emptyList())
-    val urgentTaskCount = remember(allMemos) {
-        val today = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val allTasks = remember(allMemos) {
         allMemos.flatMap { memo -> com.avinal.memos.parser.TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
-            .count { !it.isCompleted && it.dueDate != null && it.dueDate <= today }
+    }
+    val totalTaskCount = remember(allTasks) { allTasks.count { !it.isCompleted } }
+    val urgentTaskCount = remember(allTasks) {
+        val today = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())
+        allTasks.count { !it.isCompleted && it.dueDate != null && it.dueDate <= today }
     }
     val density = LocalDensity.current
 
@@ -155,9 +158,9 @@ fun MainScreen(
                         color = titleColor,
                         maxLines = 1,
                     )
-                    if (title == "tasks" && urgentTaskCount > 0) {
+                    if (title == "tasks" && totalTaskCount > 0) {
                         Text(
-                            text = "$urgentTaskCount",
+                            text = "$totalTaskCount",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = accent.copy(alpha = alpha),
@@ -200,6 +203,7 @@ fun MainScreen(
                                 showArchived = true; dateFilter = null; tagFilter = null; searchFilter = null
                                 navigateToMemosWithFilter()
                             },
+                            onOpenTasks = { scope.launch { pagerState.animateScrollToPage(2) } },
                         )
                         1 -> MemoListScreen(
                             deps = deps,
@@ -256,6 +260,7 @@ private fun ExplorerPage(
     onTagSelected: (String) -> Unit,
     onSearchSubmit: (String) -> Unit,
     onShowArchived: () -> Unit,
+    onOpenTasks: () -> Unit,
 ) {
     val memos by deps.memoRepository.observeMemos().collectAsState(initial = emptyList())
     val accent = LocalAccentColor.current
@@ -331,23 +336,6 @@ private fun ExplorerPage(
                 }.padding(vertical = 6.dp),
             )
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        var archivedCount by remember { mutableStateOf(0) }
-        LaunchedEffect(Unit) {
-            when (val result = deps.apiClient.listArchivedMemos()) {
-                is com.avinal.memos.api.ApiResult.Success -> archivedCount = result.data.memos.size
-                else -> {}
-            }
-        }
-
-        Text(
-            "view archived memos${if (archivedCount > 0) " ($archivedCount)" else ""}",
-            fontSize = 14.sp,
-            color = accent,
-            modifier = Modifier.clickable { onShowArchived() }.padding(vertical = 4.dp),
-        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -441,6 +429,95 @@ private fun ExplorerPage(
                         }
                     }
                 }
+            }
+        }
+
+        var archivedCount by remember { mutableStateOf(0) }
+        LaunchedEffect(Unit) {
+            when (val result = deps.apiClient.listArchivedMemos()) {
+                is com.avinal.memos.api.ApiResult.Success -> archivedCount = result.data.memos.size
+                else -> {}
+            }
+        }
+
+        val totalTasks = remember(memos) {
+            memos.flatMap { com.avinal.memos.parser.TaskParser.extractTasks(it.id, it.content, it.tags) }
+        }
+        val openTasks = remember(totalTasks) { totalTasks.count { !it.isCompleted } }
+        val completedTasks = remember(totalTasks) { totalTasks.count { it.isCompleted } }
+        val today = remember { kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+        val overdueTasks = remember(totalTasks, today) {
+            totalTasks.count { !it.isCompleted && it.dueDate != null && it.dueDate < today }
+        }
+        val dueToday = remember(totalTasks, today) {
+            totalTasks.count { !it.isCompleted && it.dueDate == today }
+        }
+        val memosWithTasks = remember(memos) { memos.count { it.hasTaskList } }
+
+        Spacer(Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("open tasks", fontSize = 14.sp, color = textColor)
+                Text(
+                    "$openTasks", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    color = if (openTasks > 0) accent else subtleColor,
+                    modifier = Modifier.clickable { onOpenTasks() },
+                )
+            }
+            if (dueToday > 0) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("due today", fontSize = 14.sp, color = textColor)
+                    Text(
+                        "$dueToday", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        color = accent,
+                        modifier = Modifier.clickable { onOpenTasks() },
+                    )
+                }
+            }
+            if (overdueTasks > 0) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("overdue", fontSize = 14.sp, color = textColor)
+                    Text(
+                        "$overdueTasks", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        color = com.avinal.memos.ui.theme.OverdueRed,
+                        modifier = Modifier.clickable { onOpenTasks() },
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("completed", fontSize = 14.sp, color = textColor)
+                Text("$completedTasks", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = subtleColor)
+            }
+            Spacer(
+                Modifier.fillMaxWidth().height(1.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("memos", fontSize = 14.sp, color = textColor)
+                Text("${memos.size}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = subtleColor)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("with tasks", fontSize = 14.sp, color = textColor)
+                Text("$memosWithTasks", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = subtleColor)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("tags", fontSize = 14.sp, color = textColor)
+                Text("${allTags.size}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = subtleColor)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("archived", fontSize = 14.sp, color = textColor)
+                Text(
+                    "$archivedCount", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    color = if (archivedCount > 0) accent else subtleColor,
+                    modifier = if (archivedCount > 0) Modifier.clickable { onShowArchived() } else Modifier,
+                )
             }
         }
 
