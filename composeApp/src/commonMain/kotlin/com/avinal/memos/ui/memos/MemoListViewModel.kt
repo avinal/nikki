@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,6 +34,9 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
     private val _uiState = MutableStateFlow(MemoListUiState())
     val uiState: StateFlow<MemoListUiState> = _uiState.asStateFlow()
+
+    private val _allTasksDone = MutableSharedFlow<String>()
+    val allTasksDone: SharedFlow<String> = _allTasksDone.asSharedFlow()
 
     private val _searchQuery = MutableStateFlow("")
     private var searchJob: Job? = null
@@ -141,7 +147,13 @@ class MemoListViewModel(private val memoRepository: MemoRepository) : ViewModel(
             val tasks = com.avinal.memos.parser.TaskParser.extractTasks(memoId, memo.content, memo.tags)
             val task = tasks.find { it.lineIndex == lineIndex } ?: return@launch
             val newContent = com.avinal.memos.parser.TaskParser.toggleTaskInContent(memo.content, task)
-            if (newContent != memo.content) memoRepository.updateMemo(memoId, content = newContent)
+            if (newContent != memo.content) {
+                memoRepository.updateMemo(memoId, content = newContent)
+                val updated = com.avinal.memos.parser.TaskParser.extractTasks(memoId, newContent, memo.tags)
+                if (updated.isNotEmpty() && updated.all { it.isCompleted }) {
+                    _allTasksDone.emit(memoId)
+                }
+            }
         }
     }
 

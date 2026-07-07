@@ -251,4 +251,32 @@ class TaskParserTest {
         val t = TaskParser.extractTasks("m1", "- [ ] Fix bug")[0]
         assertTrue(t.lists.isEmpty())
     }
+
+    @Test fun allTasksCompletedDetection() {
+        val content = "- [x] task 1\n- [x] task 2\n- [x] task 3"
+        val tasks = TaskParser.extractTasks("m1", content)
+        assertTrue(tasks.isNotEmpty())
+        assertTrue(tasks.all { it.isCompleted })
+    }
+
+    @Test fun notAllTasksCompletedWhenOneOpen() {
+        val content = "- [x] task 1\n- [ ] task 2\n- [x] task 3"
+        val tasks = TaskParser.extractTasks("m1", content)
+        assertFalse(tasks.all { it.isCompleted })
+    }
+
+    @Test fun toggleLastTaskMakesAllCompleted() {
+        val content = "- [x] done\n- [ ] last one"
+        val tasks = TaskParser.extractTasks("m1", content)
+        val openTask = tasks.first { !it.isCompleted }
+        val toggled = TaskParser.toggleTaskInContent(content, openTask)
+        val after = TaskParser.extractTasks("m1", toggled)
+        assertTrue(after.all { it.isCompleted })
+    }
+
+    @Test fun noTasksMeansNotAllDone() {
+        val content = "just a regular memo with no tasks"
+        val tasks = TaskParser.extractTasks("m1", content)
+        assertTrue(tasks.isEmpty())
+    }
 }
