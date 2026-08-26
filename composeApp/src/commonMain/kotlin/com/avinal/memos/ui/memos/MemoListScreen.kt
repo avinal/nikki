@@ -1,5 +1,8 @@
 package com.avinal.memos.ui.memos
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,15 +14,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -42,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +65,10 @@ import com.avinal.memos.api.ApiResult
 import com.avinal.memos.api.model.toDomain
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoVisibility
+import com.avinal.memos.ui.components.EmptyArchivedIllustration
+import com.avinal.memos.ui.components.EmptyMemoIllustration
 import com.avinal.memos.ui.components.MemoCard
+import com.avinal.memos.ui.components.MemoCardPlaceholder
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.util.rememberFilePicker
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -132,11 +145,21 @@ fun MemoListScreen(
             else -> allMemos
         }
     }
-    val listState = rememberLazyListState()
+    val savedIndex = rememberSaveable { mutableStateOf(0) }
+    val savedOffset = rememberSaveable { mutableStateOf(0) }
+    val listState = rememberLazyListState(savedIndex.value, savedOffset.value)
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            savedIndex.value = listState.firstVisibleItemIndex
+            savedOffset.value = listState.firstVisibleItemScrollOffset
+        }
+    }
     val serverUrl by produceState("") { value = deps.tokenStore.serverUrl.first() ?: "" }
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    var showSearch by remember { mutableStateOf(false) }
 
     var composeField by remember { mutableStateOf(TextFieldValue(sharedText ?: "")) }
     val defaultVis by produceState(MemoVisibility.PRIVATE) {
@@ -150,11 +173,21 @@ fun MemoListScreen(
     val haptics = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val autoArchive by produceState(false) { deps.tokenStore.autoArchiveCompletedTasks.collect { value = it } }
+
     LaunchedEffect(Unit) {
         viewModel.allTasksDone.collect { memoId ->
-            val result = snackbarHostState.showSnackbar("all tasks done", actionLabel = "archive", withDismissAction = true)
-            if (result == SnackbarResult.ActionPerformed) {
+            if (autoArchive) {
                 viewModel.archiveMemo(memoId)
+                val result = snackbarHostState.showSnackbar("archived — all tasks done", actionLabel = "undo", withDismissAction = true)
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.restoreMemo(memoId)
+                }
+            } else {
+                val result = snackbarHostState.showSnackbar("all tasks done", actionLabel = "archive", withDismissAction = true)
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.archiveMemo(memoId)
+                }
             }
         }
     }
@@ -237,6 +270,48 @@ fun MemoListScreen(
                 )
             }
             Spacer(Modifier.fillMaxWidth().height(1.dp).padding(start = 24.dp).background(subtleColor.copy(alpha = 0.15f)))
+        }
+
+        if (!hasFilter && !showArchived) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 6.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Text(
+                    if (showSearch) "close" else "search",
+                    fontSize = 13.sp,
+                    color = subtleColor,
+                    modifier = Modifier.clickable {
+                        showSearch = !showSearch
+                        if (!showSearch) viewModel.clearSearch()
+                    },
+                )
+            }
+
+            AnimatedVisibility(visible = showSearch, enter = expandVertically(), exit = shrinkVertically()) {
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, bottom = 6.dp),
+                    placeholder = { Text("search memos...", fontSize = 14.sp, color = subtleColor.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            Icon(
+                                Icons.Default.Close, "clear",
+                                modifier = Modifier.size(16.dp).clickable { viewModel.clearSearch() },
+                                tint = subtleColor,
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = subtleColor.copy(alpha = 0.3f),
+                        cursorColor = accent,
+                    ),
+                )
+            }
         }
 
         PullToRefreshBox(
@@ -396,7 +471,7 @@ fun MemoListScreen(
                     if (showDatePicker) {
                         val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
                         val dateState = rememberDatePickerState(
-                            initialSelectedDateMillis = today.toEpochDays().toLong() * 86400000L,
+                            initialSelectedDateMillis = today.toEpochDays() * 86400000L,
                         )
                         DatePickerDialog(
                             onDismissRequest = { showDatePicker = false },
@@ -506,22 +581,14 @@ fun MemoListScreen(
                 }
             }
 
-            if (showArchived && isLoadingArchived) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        androidx.compose.material3.CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
-                    }
-                }
-            } else if (uiState.isInitialLoading && memos.isEmpty() && !showArchived) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
-                        androidx.compose.material3.CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
-                    }
-                }
+            if ((showArchived && isLoadingArchived) || (uiState.isInitialLoading && memos.isEmpty() && !showArchived)) {
+                items(5) { MemoCardPlaceholder() }
             } else if (memos.isEmpty() && !uiState.isRefreshing) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (showArchived) EmptyArchivedIllustration() else EmptyMemoIllustration()
+                            Spacer(Modifier.height(12.dp))
                             Text(
                                 if (showArchived) "no archived memos" else "nothing here yet",
                                 fontSize = 17.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onBackground,

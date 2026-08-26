@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.avinal.memos.AppDependencies
 import com.avinal.memos.domain.Task
+import com.avinal.memos.ui.components.EmptyTaskIllustration
+import com.avinal.memos.ui.components.TaskGroupPlaceholder
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.ui.theme.OverdueRed
 import com.avinal.memos.ui.theme.PriorityP1
@@ -78,6 +80,8 @@ fun TaskListScreen(
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     var isRefreshing by remember { mutableStateOf(false) }
+    var hasEverLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(grouped.groups) { if (grouped.groups.isNotEmpty()) hasEverLoaded = true }
 
     LaunchedEffect(Unit) {
         viewModel.allTasksDone.collect { memoId ->
@@ -174,7 +178,7 @@ fun TaskListScreen(
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
 
                     if (showWarningDetails) {
-                        Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 6.dp)) {
+                        Column(modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 6.dp)) {
                             MixedIssuesList(allIssues, errorColor, warnColor, textColor)
                         }
                     }
@@ -185,6 +189,7 @@ fun TaskListScreen(
         LazyColumn(modifier = Modifier.weight(1f)) {
             grouped.groups.forEachIndexed { groupIndex, group ->
                 item(key = "header_${group.title}") {
+                    Column(modifier = Modifier.animateItem()) {
                     if (groupIndex > 0) {
                         Spacer(Modifier.height(6.dp))
                         Spacer(
@@ -220,6 +225,7 @@ fun TaskListScreen(
                             tint = subtleColor,
                         )
                     }
+                    }
                 }
 
                 if (!group.collapsed) {
@@ -231,6 +237,7 @@ fun TaskListScreen(
                             taskKey in warnKeys -> warnColor
                             else -> null
                         }
+                        Column(modifier = Modifier.animateItem()) {
                         MetroTaskRow(
                             task = task,
                             accent = accent,
@@ -250,14 +257,19 @@ fun TaskListScreen(
                             },
                             onClick = { selectedTask = task },
                         )
+                        }
                     }
                 }
             }
 
-            if (grouped.groups.isEmpty() || grouped.groups.all { it.tasks.isEmpty() }) {
+            if (!hasEverLoaded && (grouped.groups.isEmpty() || grouped.groups.all { it.tasks.isEmpty() })) {
+                items(3) { TaskGroupPlaceholder() }
+            } else if (grouped.groups.isEmpty() || grouped.groups.all { it.tasks.isEmpty() }) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            EmptyTaskIllustration()
+                            Spacer(Modifier.height(12.dp))
                             Text("all clear", fontSize = 17.sp, fontWeight = FontWeight.Light, color = textColor)
                             Spacer(Modifier.height(4.dp))
                             Text("tasks from your memos will appear here", fontSize = 13.sp, color = subtleColor)

@@ -117,7 +117,7 @@ fun SettingsScreen(
             AppLogo(size = 96f)
             Column {
                 Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = textColor)
-                Text("v1.0.0", fontSize = 12.sp, color = subtleColor)
+                Text("v${com.avinal.memos.AppVersion.NAME}", fontSize = 12.sp, color = subtleColor)
                 Spacer(Modifier.height(4.dp))
                 Text("a memos client with todoist-style tasks", fontSize = 13.sp, color = subtleColor)
                 Spacer(Modifier.height(2.dp))
@@ -223,6 +223,21 @@ fun SettingsScreen(
             viewModel.setSyncInterval(options[(idx + 1) % options.size])
         }
         Text("how often to fetch from server", fontSize = 12.sp, color = subtleColor)
+
+        val autoArchive by viewModel.autoArchiveCompletedTasks.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setAutoArchiveCompletedTasks(!autoArchive) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("auto-archive completed", fontSize = 15.sp, color = textColor)
+            Text(
+                if (autoArchive) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (autoArchive) accent else subtleColor,
+            )
+        }
+        Text("archive memos when all tasks are done", fontSize = 12.sp, color = subtleColor)
 
         Spacer(Modifier.height(24.dp))
         SectionHeader("notifications")

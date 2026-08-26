@@ -8,3 +8,18 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
 }
+
+fun gitVersionName(): String {
+    return providers.exec {
+        commandLine("git", "describe", "--tags", "--always", "--dirty")
+    }.standardOutput.asText.get().trim().removePrefix("v")
+}
+
+fun gitVersionCode(): Int {
+    return providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+    }.standardOutput.asText.get().trim().toIntOrNull() ?: 1
+}
+
+extra["gitVersionName"] = gitVersionName()
+extra["gitVersionCode"] = gitVersionCode()

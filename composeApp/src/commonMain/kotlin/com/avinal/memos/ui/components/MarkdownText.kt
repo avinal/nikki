@@ -54,6 +54,12 @@ fun MarkdownText(
 
     Column(modifier = modifier) {
         val lines = markdown.lines()
+        val footnoteDefRegex = Regex("""^\[\^(\w+)]:\s*(.+)$""")
+        val footnotes = remember(markdown) {
+            val map = linkedMapOf<String, String>()
+            lines.forEach { l -> footnoteDefRegex.find(l.trim())?.let { map[it.groupValues[1]] = it.groupValues[2] } }
+            map
+        }
         var lineIndex = 0
         var inCodeBlock = false
         val codeBlockLines = mutableListOf<String>()
@@ -112,18 +118,19 @@ fun MarkdownText(
                     TableBlock(tableLines, textColor, accent)
                 }
                 line.isBlank() -> Spacer(Modifier.height(4.dp))
+                footnoteDefRegex.matches(line.trim()) -> { /* skip — rendered in footnotes section */ }
                 else -> {
-                    val tagRegex = Regex("""^#(\w+)(\s+.*)?$""")
+                    val tagRegex = Regex("""^(?<!\\)#(\w+)(\s+.*)?$""")
                     val tagMatch = tagRegex.find(line.trim())
                     if (tagMatch != null && !line.trim().startsWith("##")) {
                         FlowRow(
                             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
                             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
                         ) {
-                            Regex("""#(\w+)""").findAll(line).forEach { match ->
+                            Regex("""(?<!\\)#(\w+)""").findAll(line).forEach { match ->
                                 TagChip(match.groupValues[1], accent)
                             }
-                            val nonTagText = line.replace(Regex("""#\w+"""), "").trim()
+                            val nonTagText = line.replace(Regex("""(?<!\\)#\w+"""), "").replace("\\#", "#").trim()
                             if (nonTagText.isNotEmpty()) {
                                 Text(parseInlineFormatting(nonTagText, textColor, accent), style = MaterialTheme.typography.bodyMedium)
                             }
@@ -145,6 +152,19 @@ fun MarkdownText(
 
         if (inCodeBlock && codeBlockLines.isNotEmpty()) {
             CodeBlock(codeBlockLines.joinToString("\n"), textColor)
+        }
+
+        if (footnotes.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = subtleColor.copy(alpha = 0.3f))
+            Spacer(Modifier.height(6.dp))
+            footnotes.entries.forEachIndexed { index, (_, text) ->
+                Text(
+                    text = parseInlineFormatting("${index + 1}. $text", textColor, accent),
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                    color = subtleColor,
+                )
+            }
         }
     }
 }
@@ -382,7 +402,8 @@ private val linkRegex = Regex("""\[(.+?)]\((.+?)\)""")
 private val urlRegex = Regex("""https?://\S+""")
 private val emailRegex = Regex("""[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}""")
 private val phoneRegex = Regex("""(?<!\w)(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}(?!\w)""")
-private val inlineTagRegex = Regex("""#(\w+)""")
+private val footnoteRefRegex = Regex("""\[\^(\w+)]""")
+private val inlineTagRegex = Regex("""(?<!\\)#(\w+)""")
 
 private const val TAG_BOLD_ITALIC = "bold_italic"
 private const val TAG_BOLD = "bold"
@@ -393,6 +414,7 @@ private const val TAG_LINK = "link"
 private const val TAG_URL = "url"
 private const val TAG_EMAIL = "email"
 private const val TAG_PHONE = "phone"
+private const val TAG_FOOTNOTE_REF = "footnote_ref"
 
 private val inlineRegexes = listOf(
     TAG_BOLD_ITALIC to boldItalicRegex,
@@ -403,6 +425,7 @@ private val inlineRegexes = listOf(
     TAG_ITALIC to italicRegex,
     TAG_ITALIC to italicUnderRegex,
     TAG_CODE to codeRegex,
+    TAG_FOOTNOTE_REF to footnoteRefRegex,
     TAG_LINK to linkRegex,
     TAG_URL to urlRegex,
     TAG_EMAIL to emailRegex,
@@ -440,6 +463,8 @@ private fun parseInlineFormatting(text: String, textColor: Color, accent: Color)
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = textColor)) { append(inner) }
             TAG_CODE ->
                 withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, background = accent.copy(alpha = 0.1f), color = textColor)) { append(inner) }
+            TAG_FOOTNOTE_REF ->
+                withStyle(SpanStyle(fontSize = 10.sp, color = accent, baselineShift = androidx.compose.ui.text.style.BaselineShift.Superscript)) { append(inner) }
             TAG_LINK -> {
                 val url = if (firstMatch.groupValues.size > 2) firstMatch.groupValues[2] else ""
                 if (url.startsWith("http")) {
@@ -466,11 +491,11 @@ private fun parseInlineFormattingWithTags(text: String, textColor: Color, accent
             .minByOrNull { it.range.first }
 
         if (firstMatch == null) {
-            withStyle(SpanStyle(color = textColor)) { append(remaining) }
+            withStyle(SpanStyle(color = textColor)) { append(remaining.replace("\\#", "#")) }
             break
         }
 
-        withStyle(SpanStyle(color = textColor)) { append(remaining.substring(0, firstMatch.range.first)) }
+        withStyle(SpanStyle(color = textColor)) { append(remaining.substring(0, firstMatch.range.first).replace("\\#", "#")) }
 
         when (firstMatch) {
             tagMatch -> withStyle(SpanStyle(color = accent, fontSize = 13.sp)) {

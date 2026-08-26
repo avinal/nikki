@@ -51,6 +51,9 @@ class SettingsViewModel(
     val syncInterval: StateFlow<Int> = tokenStore.syncInterval
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
 
+    val autoArchiveCompletedTasks: StateFlow<Boolean> = tokenStore.autoArchiveCompletedTasks
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     init {
         viewModelScope.launch { authRepository.validateToken() }
     }
@@ -85,6 +88,10 @@ class SettingsViewModel(
 
     fun setSyncInterval(minutes: Int) {
         viewModelScope.launch { tokenStore.saveSyncInterval(minutes) }
+    }
+
+    fun setAutoArchiveCompletedTasks(enabled: Boolean) {
+        viewModelScope.launch { tokenStore.saveAutoArchiveCompletedTasks(enabled) }
     }
 
     fun getExportJson(onResult: (String) -> Unit) {

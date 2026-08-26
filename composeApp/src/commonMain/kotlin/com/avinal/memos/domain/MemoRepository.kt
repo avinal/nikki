@@ -204,6 +204,19 @@ class MemoRepository(
                         createdAt = nowMillis(),
                     ))
                 }
+                val existing = memoDao.getById(id)
+                if (existing != null) {
+                    val updatedContent = content ?: existing.content
+                    memoDao.upsert(existing.copy(
+                        content = updatedContent,
+                        visibility = visibility?.toApiString() ?: existing.visibility,
+                        pinned = pinned ?: existing.pinned,
+                        updateTime = nowMillis(),
+                        snippet = updatedContent.take(200),
+                        hasTaskList = updatedContent.contains("- ["),
+                        hasIncompleteTasks = updatedContent.contains("- [ ]"),
+                    ))
+                }
                 isOffline = true
                 result
             }

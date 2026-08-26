@@ -22,6 +22,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
     val weekStartDay: Flow<Int> = dataStore.data.map { (it[KEY_WEEK_START] ?: "0").toIntOrNull() ?: 0 }
     val defaultNotifyTime: Flow<String> = dataStore.data.map { it[KEY_DEFAULT_NOTIFY_TIME] ?: "20:00" }
     val syncInterval: Flow<Int> = dataStore.data.map { (it[KEY_SYNC_INTERVAL] ?: "5").toIntOrNull() ?: 5 }
+    val autoArchiveCompletedTasks: Flow<Boolean> = dataStore.data.map { (it[KEY_AUTO_ARCHIVE_TASKS] ?: "false") == "true" }
 
     suspend fun saveCredentials(serverUrl: String, token: String) {
         dataStore.edit { prefs ->
@@ -60,6 +61,10 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun saveSyncInterval(minutes: Int) {
         dataStore.edit { it[KEY_SYNC_INTERVAL] = minutes.toString() }
+    }
+
+    suspend fun saveAutoArchiveCompletedTasks(enabled: Boolean) {
+        dataStore.edit { it[KEY_AUTO_ARCHIVE_TASKS] = enabled.toString() }
     }
 
     suspend fun clear() {
@@ -102,5 +107,6 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_WEEK_START = stringPreferencesKey("week_start_day")
         private val KEY_DEFAULT_NOTIFY_TIME = stringPreferencesKey("default_notify_time")
         private val KEY_SYNC_INTERVAL = stringPreferencesKey("sync_interval")
+        private val KEY_AUTO_ARCHIVE_TASKS = stringPreferencesKey("auto_archive_completed_tasks")
     }
 }

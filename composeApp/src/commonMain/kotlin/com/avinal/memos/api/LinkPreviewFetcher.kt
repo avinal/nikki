@@ -1,5 +1,7 @@
 package com.avinal.memos.api
 
+import com.avinal.memos.db.dao.LinkPreviewDao
+import com.avinal.memos.db.entity.LinkPreviewEntity
 import com.avinal.memos.domain.LinkPreview
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -8,13 +10,31 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-class LinkPreviewFetcher(private val client: HttpClient) {
+class LinkPreviewFetcher(
+    private val client: HttpClient,
+    private val dao: LinkPreviewDao? = null,
+    private val ttlMs: Long = TTL_7_DAYS,
+) {
 
     private val cache = LinkedHashMap<String, LinkPreview?>(100, 0.75f, true)
 
     suspend fun fetch(url: String): LinkPreview? {
         cache[url]?.let { return it }
         if (cache.containsKey(url)) return null
+
+        val now = currentTimeMs()
+        val minTimestamp = now - ttlMs
+
+        dao?.let { d ->
+            try {
+                val cached = d.getIfFresh(url, minTimestamp)
+                if (cached != null) {
+                    val preview = cached.toDomain()
+                    addToMemoryCache(url, preview)
+                    return preview
+                }
+            } catch (_: Exception) {}
+        }
 
         val preview = try {
             val response = client.get(url) {
@@ -31,6 +51,20 @@ class LinkPreviewFetcher(private val client: HttpClient) {
             null
         }
 
+        addToMemoryCache(url, preview)
+
+        if (preview != null) {
+            dao?.let { d ->
+                try {
+                    d.upsert(preview.toEntity(now))
+                } catch (_: Exception) {}
+            }
+        }
+
+        return preview
+    }
+
+    private fun addToMemoryCache(url: String, preview: LinkPreview?) {
         synchronized(cache) {
             if (cache.size >= MAX_CACHE) {
                 val first = cache.keys.first()
@@ -38,11 +72,23 @@ class LinkPreviewFetcher(private val client: HttpClient) {
             }
             cache[url] = preview
         }
-        return preview
     }
 
     companion object {
         private const val MAX_CACHE = 100
+        const val TTL_7_DAYS = 7L * 24 * 60 * 60 * 1000
+
+        private fun currentTimeMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
+
+        private fun LinkPreviewEntity.toDomain(): LinkPreview = LinkPreview(
+            url = url, title = title, description = description,
+            imageUrl = imageUrl, siteName = siteName,
+        )
+
+        private fun LinkPreview.toEntity(cachedAt: Long): LinkPreviewEntity = LinkPreviewEntity(
+            url = url, title = title, description = description,
+            imageUrl = imageUrl, siteName = siteName, cachedAt = cachedAt,
+        )
 
         private val ogTagRegex = Regex(
             """<meta\s+[^>]*property\s*=\s*["']og:(\w+)["'][^>]*content\s*=\s*["']([^"']*?)["'][^>]*/?>""",

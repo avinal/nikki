@@ -127,8 +127,15 @@ class MemosApiClient(
         }.body()
     }
 
-    suspend fun listComments(memoId: String): ApiResult<ListMemosResponse> = apiCall {
-        httpClient.get(url("/memos/$memoId/comments")).body()
+    suspend fun listComments(
+        memoId: String,
+        pageSize: Int = 20,
+        pageToken: String = "",
+    ): ApiResult<ListMemosResponse> = apiCall {
+        httpClient.get(url("/memos/$memoId/comments")) {
+            parameter("pageSize", pageSize)
+            if (pageToken.isNotEmpty()) parameter("pageToken", pageToken)
+        }.body()
     }
 
     suspend fun createComment(memoId: String, content: String): ApiResult<MemoDto> = apiCall {
