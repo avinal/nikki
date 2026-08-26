@@ -84,7 +84,7 @@ class MemoEditorViewModel(
                 is ApiResult.Success -> _uiState.update { it.copy(isSaving = false, isSaved = true) }
                 is ApiResult.Error -> _uiState.update { it.copy(isSaving = false, error = result.message) }
                 is ApiResult.NetworkError -> _uiState.update {
-                    it.copy(isSaving = false, error = result.exception.message ?: "Network error")
+                    it.copy(isSaving = false, isSaved = true)
                 }
             }
         }
