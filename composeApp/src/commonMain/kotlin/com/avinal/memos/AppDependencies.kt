@@ -41,12 +41,15 @@ class AppDependencies(
     }
 
     val linkPreviewFetcher: LinkPreviewFetcher by lazy {
-        LinkPreviewFetcher(io.ktor.client.HttpClient {
-            install(io.ktor.client.plugins.HttpTimeout) {
-                requestTimeoutMillis = 5_000
-                connectTimeoutMillis = 3_000
-            }
-        })
+        LinkPreviewFetcher(
+            client = io.ktor.client.HttpClient {
+                install(io.ktor.client.plugins.HttpTimeout) {
+                    requestTimeoutMillis = 5_000
+                    connectTimeoutMillis = 3_000
+                }
+            },
+            dao = database.linkPreviewDao(),
+        )
     }
 
     val authRepository: AuthRepository by lazy {
