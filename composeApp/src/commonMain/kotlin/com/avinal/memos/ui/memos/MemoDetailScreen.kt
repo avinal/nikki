@@ -16,8 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -43,13 +46,15 @@ import com.avinal.memos.api.ApiResult
 import com.avinal.memos.api.model.toDomain
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.ui.components.AttachmentGrid
+import com.avinal.memos.ui.components.CommentPlaceholder
+import com.avinal.memos.ui.components.EmptyCommentsIllustration
 import com.avinal.memos.ui.components.MarkdownText
+import com.avinal.memos.ui.components.MemoDetailPlaceholder
 import com.avinal.memos.ui.components.ReactionBar
+import com.avinal.memos.ui.components.toRelativeString
 import com.avinal.memos.ui.theme.LocalAccentColor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun MemoDetailScreen(
@@ -66,7 +71,28 @@ fun MemoDetailScreen(
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        viewModel.allTasksDone.collect { id ->
+            val autoArchive = deps.tokenStore.autoArchiveCompletedTasks.first()
+            if (autoArchive) {
+                deps.memoRepository.archiveMemo(id)
+                val result = snackbarHostState.showSnackbar(
+                    "archived — all tasks done",
+                    actionLabel = "undo",
+                    withDismissAction = true,
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    deps.memoRepository.restoreMemo(id)
+                } else {
+                    onDeleted()
+                }
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -84,9 +110,7 @@ fun MemoDetailScreen(
 
         when {
             isLoading && memo == null -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = accent)
-                }
+                MemoDetailPlaceholder()
             }
             memo == null -> {
                 Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -106,9 +130,9 @@ fun MemoDetailScreen(
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(memo!!.visibility.name.lowercase(), fontSize = 12.sp, color = subtleColor)
-                        Text(formatDateTime(memo!!.createTime), fontSize = 12.sp, color = subtleColor)
+                        Text(memo!!.createTime.toRelativeString(), fontSize = 12.sp, color = subtleColor)
                         if (memo!!.updateTime != memo!!.createTime) {
-                            Text("edited ${formatDateTime(memo!!.updateTime)}", fontSize = 12.sp, color = subtleColor)
+                            Text("edited ${memo!!.updateTime.toRelativeString()}", fontSize = 12.sp, color = subtleColor)
                         }
                     }
 
@@ -138,14 +162,20 @@ fun MemoDetailScreen(
             }
         }
     }
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    ) { data ->
+        Snackbar(
+            snackbarData = data,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = textColor,
+            actionColor = accent,
+        )
+    }
+    }
 }
 
-private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-private fun formatDateTime(instant: kotlin.time.Instant): String {
-    val local = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${monthNames[local.month.ordinal]} ${local.day}, ${local.year}"
-}
 
 @Composable
 private fun CommentsSection(
@@ -158,15 +188,35 @@ private fun CommentsSection(
     var comments by remember { mutableStateOf<List<Memo>>(emptyList()) }
     var commentText by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var nextPageToken by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(memoId) {
         isLoading = true
         when (val result = deps.apiClient.listComments(memoId)) {
-            is ApiResult.Success -> comments = result.data.memos.map { it.toDomain() }
+            is ApiResult.Success -> {
+                comments = result.data.memos.map { it.toDomain() }
+                nextPageToken = result.data.nextPageToken
+            }
             else -> {}
         }
         isLoading = false
+    }
+
+    fun loadMore() {
+        if (nextPageToken.isEmpty() || isLoadingMore) return
+        isLoadingMore = true
+        scope.launch {
+            when (val result = deps.apiClient.listComments(memoId, pageToken = nextPageToken)) {
+                is ApiResult.Success -> {
+                    comments = comments + result.data.memos.map { it.toDomain() }
+                    nextPageToken = result.data.nextPageToken
+                }
+                else -> {}
+            }
+            isLoadingMore = false
+        }
     }
 
     fun submitComment() {
@@ -187,16 +237,20 @@ private fun CommentsSection(
         Spacer(Modifier.height(8.dp))
 
         if (isLoading) {
-            Text("loading...", fontSize = 13.sp, color = subtleColor)
+            repeat(2) { CommentPlaceholder() }
         } else if (comments.isEmpty()) {
-            Text("no comments yet", fontSize = 13.sp, color = subtleColor)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                EmptyCommentsIllustration()
+                Spacer(Modifier.height(6.dp))
+                Text("no comments yet", fontSize = 13.sp, color = subtleColor)
+            }
         } else {
             comments.forEach { comment ->
                 Column(modifier = Modifier.padding(bottom = 12.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(comment.creator, fontSize = 12.sp, color = subtleColor)
-                            Text(formatDateTime(comment.createTime), fontSize = 12.sp, color = subtleColor)
+                            Text(comment.createTime.toRelativeString(), fontSize = 12.sp, color = subtleColor)
                         }
                         Text("delete", fontSize = 12.sp, color = subtleColor.copy(alpha = 0.5f),
                             modifier = Modifier.clickable {
@@ -209,6 +263,19 @@ private fun CommentsSection(
                     Spacer(Modifier.height(2.dp))
                     MarkdownText(markdown = comment.content)
                 }
+            }
+        }
+
+        if (nextPageToken.isNotEmpty()) {
+            if (isLoadingMore) {
+                Text("loading...", fontSize = 13.sp, color = subtleColor)
+            } else {
+                Text(
+                    "load more comments",
+                    fontSize = 13.sp,
+                    color = accent,
+                    modifier = Modifier.clickable { loadMore() }.padding(vertical = 4.dp),
+                )
             }
         }
 

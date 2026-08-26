@@ -48,7 +48,6 @@ import kotlin.time.Instant
 import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 private const val COMPACT_MAX_LINES = 12
 
@@ -143,7 +142,7 @@ fun MemoCard(
                     Text("pinned", fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text(formatAbsoluteDate(memo.displayTime), fontSize = 12.sp, color = subtleColor)
+                Text(memo.displayTime.toRelativeString(), fontSize = 12.sp, color = subtleColor)
                 if (memo.commentCount > 0) {
                     Spacer(Modifier.width(8.dp))
                     Text("${memo.commentCount} comment${if (memo.commentCount > 1) "s" else ""}", fontSize = 12.sp, color = subtleColor)
@@ -383,12 +382,3 @@ private fun EditorChip(label: String, color: Color) {
     )
 }
 
-private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-private val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-
-private fun formatAbsoluteDate(instant: Instant): String {
-    val local = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    val dow = dayNames[local.dayOfWeek.ordinal]
-    val month = monthNames[local.month.ordinal]
-    return "$dow, $month ${local.day}"
-}
