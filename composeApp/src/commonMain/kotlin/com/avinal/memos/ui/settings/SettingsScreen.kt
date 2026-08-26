@@ -117,7 +117,7 @@ fun SettingsScreen(
             AppLogo(size = 96f)
             Column {
                 Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = textColor)
-                Text("v1.0.0", fontSize = 12.sp, color = subtleColor)
+                Text("v${com.avinal.memos.AppVersion.NAME}", fontSize = 12.sp, color = subtleColor)
                 Spacer(Modifier.height(4.dp))
                 Text("a memos client with todoist-style tasks", fontSize = 13.sp, color = subtleColor)
                 Spacer(Modifier.height(2.dp))

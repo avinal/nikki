@@ -84,6 +84,29 @@ kotlin {
     }
 }
 
+val generateVersionFile by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/version")
+    val versionName = rootProject.extra["gitVersionName"] as String
+    outputs.dir(outputDir)
+    doLast {
+        val dir = outputDir.get().asFile.resolve("com/avinal/memos")
+        dir.mkdirs()
+        dir.resolve("AppVersion.kt").writeText(
+            """
+            |package com.avinal.memos
+            |
+            |object AppVersion {
+            |    const val NAME = "$versionName"
+            |}
+            |""".trimMargin()
+        )
+    }
+}
+
+kotlin.sourceSets.commonMain {
+    kotlin.srcDir(generateVersionFile.map { it.outputs.files.singleFile })
+}
+
 room {
     schemaDirectory("$projectDir/schemas")
 }
