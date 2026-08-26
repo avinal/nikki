@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MemoDao {
 
-    @Query("SELECT * FROM memos ORDER BY pinned DESC, updateTime DESC")
+    @Query("SELECT * FROM memos ORDER BY updateTime DESC")
     fun observeAll(): Flow<List<MemoEntity>>
 
-    @Query("SELECT * FROM memos ORDER BY pinned DESC, updateTime DESC")
+    @Query("SELECT * FROM memos ORDER BY updateTime DESC")
     suspend fun getAll(): List<MemoEntity>
 
     @Query("SELECT * FROM memos WHERE id = :id")
