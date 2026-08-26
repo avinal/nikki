@@ -224,6 +224,21 @@ fun SettingsScreen(
         }
         Text("how often to fetch from server", fontSize = 12.sp, color = subtleColor)
 
+        val autoArchive by viewModel.autoArchiveCompletedTasks.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setAutoArchiveCompletedTasks(!autoArchive) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("auto-archive completed", fontSize = 15.sp, color = textColor)
+            Text(
+                if (autoArchive) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (autoArchive) accent else subtleColor,
+            )
+        }
+        Text("archive memos when all tasks are done", fontSize = 12.sp, color = subtleColor)
+
         Spacer(Modifier.height(24.dp))
         SectionHeader("notifications")
         Spacer(Modifier.height(6.dp))
