@@ -1,11 +1,11 @@
 [versions]
-agp = "9.2.1"
-kotlin = "2.3.21"
-compose-multiplatform = "1.11.0"
-ksp = "2.3.7"
+agp = "9.3.2"
+kotlin = "2.4.0"
+compose-multiplatform = "1.11.1"
+ksp = "2.3.11"
 
 # AndroidX
-core-ktx = "1.18.0"
+core-ktx = "1.19.0"
 activity-compose = "1.13.0"
 lifecycle = "2.10.0"
 navigation = "2.9.2"
@@ -20,10 +20,10 @@ kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
 
 # Networking
-ktor = "3.5.0"
+ktor = "3.5.2"
 
 # Image loading
-coil = "3.4.0"
+coil = "3.5.0"
 
 # Testing
 junit = "4.13.2"
