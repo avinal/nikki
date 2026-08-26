@@ -471,7 +471,7 @@ fun MemoListScreen(
                     if (showDatePicker) {
                         val today = kotlin.time.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
                         val dateState = rememberDatePickerState(
-                            initialSelectedDateMillis = today.toEpochDays().toLong() * 86400000L,
+                            initialSelectedDateMillis = today.toEpochDays() * 86400000L,
                         )
                         DatePickerDialog(
                             onDismissRequest = { showDatePicker = false },

@@ -30,7 +30,7 @@ class TaskParserTest {
 
     @Test fun parsesIsoDate() {
         val t = TaskParser.extractTasks("m1", "- [ ] Review 2026-05-25")[0]
-        assertEquals(2026, t.dueDate!!.year); assertEquals(25, t.dueDate!!.dayOfMonth)
+        assertNotNull(t.dueDate); assertEquals(2026, t.dueDate.year); assertEquals(25, t.dueDate.day)
     }
     @Test fun invalidIsoDate() { assertNull(TaskParser.extractTasks("m1", "- [ ] Review 2026-13-45")[0].dueDate) }
     @Test fun isoDateCleaned() { assertFalse(TaskParser.extractTasks("m1", "- [ ] Fix 2026-05-25")[0].text.contains("2026")) }
@@ -46,18 +46,18 @@ class TaskParserTest {
 
     // --- Due time ---
 
-    @Test fun parses12hPm() { assertEquals(17, TaskParser.extractTasks("m1", "- [ ] Meeting 5pm")[0].dueTime!!.hour) }
-    @Test fun parses12hAm() { assertEquals(9, TaskParser.extractTasks("m1", "- [ ] Standup 9am")[0].dueTime!!.hour) }
+    @Test fun parses12hPm() { val t = TaskParser.extractTasks("m1", "- [ ] Meeting 5pm")[0]; assertNotNull(t.dueTime); assertEquals(17, t.dueTime.hour) }
+    @Test fun parses12hAm() { val t = TaskParser.extractTasks("m1", "- [ ] Standup 9am")[0]; assertNotNull(t.dueTime); assertEquals(9, t.dueTime.hour) }
     @Test fun parses12hMinutes() {
         val t = TaskParser.extractTasks("m1", "- [ ] Call 2:30pm")[0]
-        assertEquals(14, t.dueTime!!.hour); assertEquals(30, t.dueTime!!.minute)
+        assertNotNull(t.dueTime); assertEquals(14, t.dueTime.hour); assertEquals(30, t.dueTime.minute)
     }
     @Test fun parses24h() {
         val t = TaskParser.extractTasks("m1", "- [ ] Deploy 14:30")[0]
-        assertEquals(14, t.dueTime!!.hour); assertEquals(30, t.dueTime!!.minute)
+        assertNotNull(t.dueTime); assertEquals(14, t.dueTime.hour); assertEquals(30, t.dueTime.minute)
     }
-    @Test fun parses12am() { assertEquals(0, TaskParser.extractTasks("m1", "- [ ] Reset 12am")[0].dueTime!!.hour) }
-    @Test fun parses12pm() { assertEquals(12, TaskParser.extractTasks("m1", "- [ ] Lunch 12pm")[0].dueTime!!.hour) }
+    @Test fun parses12am() { val t = TaskParser.extractTasks("m1", "- [ ] Reset 12am")[0]; assertNotNull(t.dueTime); assertEquals(0, t.dueTime.hour) }
+    @Test fun parses12pm() { val t = TaskParser.extractTasks("m1", "- [ ] Lunch 12pm")[0]; assertNotNull(t.dueTime); assertEquals(12, t.dueTime.hour) }
     @Test fun noTime() { assertNull(TaskParser.extractTasks("m1", "- [ ] Simple")[0].dueTime) }
     @Test fun timeCleaned() { assertFalse(TaskParser.extractTasks("m1", "- [ ] Meeting 5pm today")[0].text.contains("5pm")) }
     @Test fun isoDateColonNotTime() { assertNull(TaskParser.extractTasks("m1", "- [ ] Fix 2026-05-25")[0].dueTime) }
@@ -169,8 +169,9 @@ class TaskParserTest {
     @Test fun fullCombined() {
         val t = TaskParser.extractTasks("m1", "- [ ] Review PR 2026-05-25 3pm !1hr p1 #work #devops")[0]
         assertEquals("Review PR", t.text)
-        assertEquals(2026, t.dueDate!!.year); assertEquals(15, t.dueTime!!.hour)
-        assertEquals(1, t.reminder!!.value); assertEquals(ReminderUnit.HR, t.reminder!!.unit)
+        assertNotNull(t.dueDate); assertEquals(2026, t.dueDate.year)
+        assertNotNull(t.dueTime); assertEquals(15, t.dueTime.hour)
+        assertNotNull(t.reminder); assertEquals(1, t.reminder.value); assertEquals(ReminderUnit.HR, t.reminder.unit)
         assertEquals(1, t.priority); assertEquals(listOf("work", "devops"), t.lists)
     }
     @Test fun emptyContent() { assertTrue(TaskParser.extractTasks("m1", "").isEmpty()) }
@@ -180,11 +181,12 @@ class TaskParserTest {
         assertNull(t.dueDate); assertNull(t.dueTime); assertNull(t.reminder); assertNull(t.priority); assertTrue(t.lists.isEmpty())
     }
     @Test fun urlHash() { assertTrue(TaskParser.extractTasks("m1", "- [ ] Check https://ex.com/p#sec")[0].text.contains("https://ex.com")) }
-    @Test fun multipleTimesFirstWins() { assertEquals(9, TaskParser.extractTasks("m1", "- [ ] Call 9am then 5pm")[0].dueTime!!.hour) }
+    @Test fun multipleTimesFirstWins() { val t = TaskParser.extractTasks("m1", "- [ ] Call 9am then 5pm")[0]; assertNotNull(t.dueTime); assertEquals(9, t.dueTime.hour) }
     @Test fun dateAndTimeAndReminder() {
         val t = TaskParser.extractTasks("m1", "- [ ] Meet tomorrow 3pm !15min #work")[0]
-        assertNotNull(t.dueDate); assertEquals(15, t.dueTime!!.hour)
-        assertEquals(15, t.reminder!!.value); assertEquals(ReminderUnit.MIN, t.reminder!!.unit)
+        assertNotNull(t.dueDate)
+        assertNotNull(t.dueTime); assertEquals(15, t.dueTime.hour)
+        assertNotNull(t.reminder); assertEquals(15, t.reminder.value); assertEquals(ReminderUnit.MIN, t.reminder.unit)
     }
 
     // --- Relative dates ---

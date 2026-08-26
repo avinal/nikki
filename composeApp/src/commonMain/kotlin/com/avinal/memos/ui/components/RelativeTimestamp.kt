@@ -22,9 +22,7 @@ fun RelativeTimestamp(instant: Instant, modifier: Modifier = Modifier) {
 private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 private val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
-fun Instant.toRelativeString(): String {
-    val now = Clock.System.now()
-    val tz = TimeZone.currentSystemDefault()
+fun Instant.toRelativeString(now: Instant = Clock.System.now(), tz: TimeZone = TimeZone.currentSystemDefault()): String {
     val diffMs = now.toEpochMilliseconds() - this.toEpochMilliseconds()
     val seconds = diffMs / 1000
     val minutes = diffMs / 60_000
