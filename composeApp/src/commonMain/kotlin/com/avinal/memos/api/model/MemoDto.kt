@@ -111,3 +111,11 @@ data class CreateAttachmentRequest(
     val type: String,
     val content: String,
 )
+
+@Serializable
+data class LinkMetadataDto(
+    val url: String = "",
+    val title: String = "",
+    val description: String = "",
+    val image: String = "",
+)

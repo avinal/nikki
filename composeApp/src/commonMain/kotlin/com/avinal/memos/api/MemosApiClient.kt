@@ -4,6 +4,7 @@ import com.avinal.memos.api.model.AttachmentDto
 import com.avinal.memos.api.model.AttachmentRef
 import com.avinal.memos.api.model.CreateAttachmentRequest
 import com.avinal.memos.api.model.CreateMemoRequest
+import com.avinal.memos.api.model.LinkMetadataDto
 import com.avinal.memos.api.model.ListMemosResponse
 import com.avinal.memos.api.model.MemoDto
 import com.avinal.memos.api.model.ReactionDto
@@ -142,6 +143,12 @@ class MemosApiClient(
         httpClient.post(url("/memos/$memoId/comments")) {
             contentType(ContentType.Application.Json)
             setBody(CreateMemoRequest(content = content))
+        }.body()
+    }
+
+    suspend fun getLinkMetadata(linkUrl: String): ApiResult<LinkMetadataDto> = apiCall {
+        httpClient.get(url("/memos/-/linkMetadata")) {
+            parameter("url", linkUrl)
         }.body()
     }
 
