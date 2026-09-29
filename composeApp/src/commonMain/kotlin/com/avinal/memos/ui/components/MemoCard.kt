@@ -69,6 +69,7 @@ fun MemoCard(
     onReact: ((String) -> Unit)? = null,
     onTaskToggle: ((Int, Boolean) -> Unit)? = null,
     onRestore: (() -> Unit)? = null,
+    onShareLink: (() -> Unit)? = null,
     linkPreviewFetcher: com.avinal.memos.api.LinkPreviewFetcher? = null,
 ) {
     val accent = LocalAccentColor.current
@@ -121,6 +122,9 @@ fun MemoCard(
                         }
                         MetroMenuItem("copy content", textColor) { showMenu = false; clipboardManager.setText(AnnotatedString(memo.content)) }
                         MetroMenuItem("share", textColor) { showMenu = false; sharePlainText(memo.content) }
+                        if (onShareLink != null) {
+                            MetroMenuItem("share link", textColor) { showMenu = false; onShareLink.invoke() }
+                        }
                         MetroMenuItem("archive", textColor) { showMenu = false; onArchive?.invoke() }
                         Spacer(Modifier.height(8.dp))
                         MetroMenuItem("delete", MaterialTheme.colorScheme.error) { showMenu = false; showDeleteDialog = true }

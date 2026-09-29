@@ -113,6 +113,18 @@ data class CreateAttachmentRequest(
 )
 
 @Serializable
+data class MemoShareDto(
+    val name: String = "",
+    val createTime: String = "",
+    val expireTime: String? = null,
+)
+
+@Serializable
+data class CreateMemoShareRequest(
+    val memoShare: MemoShareDto = MemoShareDto(),
+)
+
+@Serializable
 data class LinkMetadataDto(
     val url: String = "",
     val title: String = "",
