@@ -277,7 +277,7 @@ class MemoRepository(
             is ApiResult.Success -> {
                 val token = result.data.name.substringAfterLast("/")
                 val baseUrl = apiClient.baseUrlProvider().trimEnd('/')
-                ApiResult.Success("$baseUrl/m/$token")
+                ApiResult.Success("$baseUrl/memos/shares/$token")
             }
             is ApiResult.Error -> result
             is ApiResult.NetworkError -> result
