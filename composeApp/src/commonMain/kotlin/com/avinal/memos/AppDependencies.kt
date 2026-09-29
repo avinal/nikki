@@ -42,12 +42,7 @@ class AppDependencies(
 
     val linkPreviewFetcher: LinkPreviewFetcher by lazy {
         LinkPreviewFetcher(
-            client = io.ktor.client.HttpClient {
-                install(io.ktor.client.plugins.HttpTimeout) {
-                    requestTimeoutMillis = 5_000
-                    connectTimeoutMillis = 3_000
-                }
-            },
+            apiClient = apiClient,
             dao = database.linkPreviewDao(),
         )
     }

@@ -34,7 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -42,14 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoVisibility
+import com.avinal.memos.ui.components.toGutterParts
 import com.avinal.memos.ui.theme.LocalAccentColor
 import com.avinal.memos.util.sharePlainText
 import kotlin.time.Instant
 import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
-
-private const val COMPACT_MAX_LINES = 12
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -58,6 +60,8 @@ fun MemoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     serverUrl: String = "",
+    maxPreviewLines: Int = 0,
+    accentGutter: Boolean = false,
     onPin: (() -> Unit)? = null,
     onArchive: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
@@ -65,13 +69,14 @@ fun MemoCard(
     onReact: ((String) -> Unit)? = null,
     onTaskToggle: ((Int, Boolean) -> Unit)? = null,
     onRestore: (() -> Unit)? = null,
+    onShareLink: (() -> Unit)? = null,
     linkPreviewFetcher: com.avinal.memos.api.LinkPreviewFetcher? = null,
 ) {
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val contentLines = remember(memo.content) { memo.content.lines() }
-    val isLong = contentLines.size > COMPACT_MAX_LINES
+    val isLong = maxPreviewLines > 0 && contentLines.size > maxPreviewLines
     var expanded by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var editContent by remember { mutableStateOf("") }
@@ -117,6 +122,9 @@ fun MemoCard(
                         }
                         MetroMenuItem("copy content", textColor) { showMenu = false; clipboardManager.setText(AnnotatedString(memo.content)) }
                         MetroMenuItem("share", textColor) { showMenu = false; sharePlainText(memo.content) }
+                        if (onShareLink != null) {
+                            MetroMenuItem("share link", textColor) { showMenu = false; onShareLink.invoke() }
+                        }
                         MetroMenuItem("archive", textColor) { showMenu = false; onArchive?.invoke() }
                         Spacer(Modifier.height(8.dp))
                         MetroMenuItem("delete", MaterialTheme.colorScheme.error) { showMenu = false; showDeleteDialog = true }
@@ -127,83 +135,121 @@ fun MemoCard(
         )
     }
 
+    val gutterParts = remember(memo.displayTime) { memo.displayTime.toGutterParts() }
+    val gutterLabel = if (contentLines.size > 4) gutterParts.longLabel else gutterParts.shortLabel
+
     Column(modifier = modifier.fillMaxWidth()) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = { if (!isEditing) onClick() },
                     onLongClick = { if (!isEditing) showMenu = true },
                 )
-                .padding(start = 24.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (memo.pinned) {
-                    Text("pinned", fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(memo.displayTime.toRelativeString(), fontSize = 12.sp, color = subtleColor)
-                if (memo.commentCount > 0) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("${memo.commentCount} comment${if (memo.commentCount > 1) "s" else ""}", fontSize = 12.sp, color = subtleColor)
-                }
-                if (memo.pendingSyncId != null) {
-                    Spacer(Modifier.weight(1f))
-                    Text("unsynced", fontSize = 12.sp, color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), fontWeight = FontWeight.SemiBold)
+            val gutterColor = if (accentGutter) accent else subtleColor.copy(alpha = 0.6f)
+
+            Column(
+                modifier = Modifier.width(36.dp).padding(top = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    gutterParts.number,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Light,
+                    color = gutterColor,
+                    modifier = Modifier.graphicsLayer { scaleX = 0.85f },
+                )
+                if (gutterLabel.isNotEmpty()) {
+                    Text(
+                        gutterLabel,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = gutterColor.copy(alpha = 0.7f),
+                        letterSpacing = 1.sp,
+                        modifier = Modifier
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Int.MAX_VALUE, minHeight = 0))
+                                layout(placeable.height, placeable.width) {
+                                    placeable.place(
+                                        -(placeable.width - placeable.height) / 2,
+                                        (placeable.width - placeable.height) / 2,
+                                    )
+                                }
+                            }
+                            .rotate(-90f),
+                    )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (memo.pinned) {
+                        Text("pinned", fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    if (memo.commentCount > 0) {
+                        Text("${memo.commentCount} comment${if (memo.commentCount > 1) "s" else ""}", fontSize = 12.sp, color = subtleColor)
+                    }
+                    if (memo.pendingSyncId != null) {
+                        Spacer(Modifier.weight(1f))
+                        Text("unsynced", fontSize = 12.sp, color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), fontWeight = FontWeight.SemiBold)
+                    }
+                }
 
-            if (isEditing) {
-                InlineEditor(
-                    content = editContent, visibility = editVisibility, accent = accent,
-                    textColor = textColor, subtleColor = subtleColor,
-                    onContentChange = { editContent = it }, onVisibilityChange = { editVisibility = it },
-                    onSave = { onSave?.invoke(editContent, editVisibility); isEditing = false },
-                    onCancel = { isEditing = false },
-                )
-            } else {
-                val displayContent = if (!expanded && isLong) {
-                    contentLines.take(COMPACT_MAX_LINES).joinToString("\n")
+                if (memo.pinned || memo.commentCount > 0 || memo.pendingSyncId != null) {
+                    Spacer(Modifier.height(6.dp))
+                }
+
+                if (isEditing) {
+                    InlineEditor(
+                        content = editContent, visibility = editVisibility, accent = accent,
+                        textColor = textColor, subtleColor = subtleColor,
+                        onContentChange = { editContent = it }, onVisibilityChange = { editVisibility = it },
+                        onSave = { onSave?.invoke(editContent, editVisibility); isEditing = false },
+                        onCancel = { isEditing = false },
+                    )
                 } else {
-                    memo.content
-                }
+                    val displayContent = if (!expanded && isLong) {
+                        contentLines.take(maxPreviewLines).joinToString("\n")
+                    } else {
+                        memo.content
+                    }
 
-                Box(modifier = Modifier.fillMaxWidth().animateContentSize()) {
-                    MarkdownText(
-                        markdown = displayContent,
-                        modifier = Modifier.fillMaxWidth(),
-                        onTaskToggle = onTaskToggle,
-                        linkPreviewFetcher = linkPreviewFetcher,
-                    )
-                }
+                    Box(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+                        MarkdownText(
+                            markdown = displayContent,
+                            modifier = Modifier.fillMaxWidth(),
+                            onTaskToggle = onTaskToggle,
+                            linkPreviewFetcher = linkPreviewFetcher,
+                            maxLinkPreviews = if (expanded) Int.MAX_VALUE else 1,
+                        )
+                    }
 
-                if (isLong) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (expanded) "show less" else "show more",
-                        fontSize = 12.sp, color = accent,
-                        modifier = Modifier.clickable { expanded = !expanded }.padding(vertical = 2.dp),
-                    )
-                }
+                    if (isLong) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            if (expanded) "show less" else "show more",
+                            fontSize = 12.sp, color = accent,
+                            modifier = Modifier.clickable { expanded = !expanded }.padding(vertical = 2.dp),
+                        )
+                    }
 
-                if (memo.attachments.any { it.isImage } && serverUrl.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    AttachmentGrid(attachments = memo.attachments, serverUrl = serverUrl)
-                }
+                    if (memo.attachments.any { it.isImage } && serverUrl.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        AttachmentGrid(attachments = memo.attachments, serverUrl = serverUrl)
+                    }
 
-                if (memo.reactions.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    ReactionBar(reactions = memo.reactions)
+                    if (memo.reactions.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        ReactionBar(reactions = memo.reactions)
+                    }
                 }
             }
         }
 
-        Spacer(
-            Modifier.fillMaxWidth().height(1.dp).padding(start = 24.dp)
-                .background(accent.copy(alpha = 0.25f))
-        )
+        Spacer(Modifier.height(2.dp))
     }
 }
 

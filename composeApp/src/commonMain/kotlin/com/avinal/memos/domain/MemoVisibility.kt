@@ -1,7 +1,7 @@
 package com.avinal.memos.domain
 
 enum class MemoVisibility {
-    PRIVATE, PROTECTED, PUBLIC;
+    PRIVATE, PROTECTED, PUBLIC, SPACE;
 
     fun toApiString(): String = name
 

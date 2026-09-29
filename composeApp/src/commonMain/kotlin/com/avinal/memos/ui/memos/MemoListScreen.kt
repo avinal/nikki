@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.avinal.memos.AppDependencies
 import com.avinal.memos.api.ApiResult
+import com.avinal.memos.util.sharePlainText
 import com.avinal.memos.api.model.toDomain
 import com.avinal.memos.domain.Memo
 import com.avinal.memos.domain.MemoVisibility
@@ -155,6 +156,8 @@ fun MemoListScreen(
         }
     }
     val serverUrl by produceState("") { value = deps.tokenStore.serverUrl.first() ?: "" }
+    val memoPreviewLines by produceState(8) { deps.tokenStore.memoPreviewLines.collect { value = it } }
+    val accentGutter by produceState(false) { deps.tokenStore.accentGutter.collect { value = it } }
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -610,6 +613,8 @@ fun MemoListScreen(
                         memo = memo,
                         onClick = { onMemoClick(memo.id) },
                         serverUrl = serverUrl,
+                        maxPreviewLines = memoPreviewLines,
+                        accentGutter = accentGutter,
                         onPin = null,
                         onArchive = null,
                         onDelete = { viewModel.deleteMemo(memo.id) },
@@ -626,6 +631,8 @@ fun MemoListScreen(
                         memo = memo,
                         onClick = { onMemoClick(memo.id) },
                         serverUrl = serverUrl,
+                        maxPreviewLines = memoPreviewLines,
+                        accentGutter = accentGutter,
                         onPin = { viewModel.togglePin(memo) },
                         onArchive = { viewModel.archiveMemo(memo.id) },
                         onDelete = { viewModel.deleteMemo(memo.id) },
@@ -634,6 +641,14 @@ fun MemoListScreen(
                         },
                         onReact = { emoji -> viewModel.reactToMemo(memo.id, emoji) },
                         onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(memo.id, lineIndex, checked) },
+                        onShareLink = {
+                            uploadScope.launch {
+                                when (val result = deps.memoRepository.createShareLink(memo.id)) {
+                                    is ApiResult.Success -> sharePlainText(result.data)
+                                    else -> {}
+                                }
+                            }
+                        },
                         linkPreviewFetcher = deps.linkPreviewFetcher,
                     )
                 }

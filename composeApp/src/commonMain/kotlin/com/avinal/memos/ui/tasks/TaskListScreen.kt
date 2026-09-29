@@ -139,6 +139,15 @@ fun TaskListScreen(
             MetroDropdown("sort: ${filters.sortBy.label}", SortBy.entries.toList(), filters.sortBy, { it.label }, accent, subtleColor) {
                 viewModel.setSortBy(it)
             }
+            if (grouped.memoSources.size > 1) {
+                val memoOptions = listOf<String?>(null) + grouped.memoSources.keys.toList()
+                val memoLabel = if (filters.filterMemoId != null) {
+                    "memo: ${grouped.memoSources[filters.filterMemoId]?.take(12) ?: "?"}"
+                } else "memo: all"
+                MetroDropdown(memoLabel, memoOptions, filters.filterMemoId, { id ->
+                    if (id == null) "all" else grouped.memoSources[id]?.take(20) ?: id.take(8)
+                }, accent, subtleColor) { viewModel.setFilterMemo(it) }
+            }
         }
 
         Spacer(
@@ -206,7 +215,7 @@ fun TaskListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            group.title.lowercase(),
+                            group.title,
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Light,
                             color = textColor,
@@ -328,14 +337,30 @@ private fun MetroTaskRow(
     dotColor: Color? = null,
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val edgeColor = when {
+        task.isCompleted -> null
+        task.dueDate != null && task.dueDate < today -> OverdueRed
+        task.dueDate == today -> accent
+        task.priority == 1 -> PriorityP1
+        else -> null
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 24.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Spacer(
+            Modifier
+                .width(3.dp)
+                .height(36.dp)
+                .background(edgeColor ?: Color.Transparent)
+        )
+
+        Spacer(Modifier.width(18.dp))
+
         Checkbox(
             checked = task.isCompleted,
             onCheckedChange = { onToggle() },
@@ -386,6 +411,8 @@ private fun MetroTaskRow(
             Spacer(Modifier.width(6.dp))
             Box(Modifier.size(5.dp).background(dotColor, androidx.compose.foundation.shape.CircleShape))
         }
+
+        Spacer(Modifier.width(12.dp))
     }
 }
 

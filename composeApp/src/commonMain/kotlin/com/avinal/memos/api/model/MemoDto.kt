@@ -9,7 +9,6 @@ data class MemoDto(
     val creator: String = "",
     val createTime: String = "",
     val updateTime: String = "",
-    val displayTime: String = "",
     val content: String = "",
     val state: String = "NORMAL",
     val visibility: String = "PRIVATE",
@@ -47,7 +46,6 @@ data class AttachmentDto(
 data class ReactionDto(
     val name: String = "",
     val creator: String = "",
-    val contentId: String = "",
     val reactionType: String = "",
     val createTime: String = "",
 )
@@ -112,4 +110,24 @@ data class CreateAttachmentRequest(
     val filename: String,
     val type: String,
     val content: String,
+)
+
+@Serializable
+data class MemoShareDto(
+    val name: String = "",
+    val createTime: String = "",
+    val expireTime: String? = null,
+)
+
+@Serializable
+data class CreateMemoShareRequest(
+    val memoShare: MemoShareDto = MemoShareDto(),
+)
+
+@Serializable
+data class LinkMetadataDto(
+    val url: String = "",
+    val title: String = "",
+    val description: String = "",
+    val image: String = "",
 )

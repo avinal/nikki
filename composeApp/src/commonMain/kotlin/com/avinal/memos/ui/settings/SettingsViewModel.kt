@@ -54,6 +54,12 @@ class SettingsViewModel(
     val autoArchiveCompletedTasks: StateFlow<Boolean> = tokenStore.autoArchiveCompletedTasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val memoPreviewLines: StateFlow<Int> = tokenStore.memoPreviewLines
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8)
+
+    val accentGutter: StateFlow<Boolean> = tokenStore.accentGutter
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     init {
         viewModelScope.launch { authRepository.validateToken() }
     }
@@ -92,6 +98,14 @@ class SettingsViewModel(
 
     fun setAutoArchiveCompletedTasks(enabled: Boolean) {
         viewModelScope.launch { tokenStore.saveAutoArchiveCompletedTasks(enabled) }
+    }
+
+    fun setMemoPreviewLines(lines: Int) {
+        viewModelScope.launch { tokenStore.saveMemoPreviewLines(lines) }
+    }
+
+    fun setAccentGutter(enabled: Boolean) {
+        viewModelScope.launch { tokenStore.saveAccentGutter(enabled) }
     }
 
     fun getExportJson(onResult: (String) -> Unit) {

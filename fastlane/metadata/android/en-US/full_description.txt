@@ -5,9 +5,14 @@ Tasks are parsed directly from markdown checkboxes in your notes. Write "- [ ] b
 Features:
 • Full Memos API integration (create, edit, pin, archive, delete)
 • Rich markdown rendering with code highlighting, tables, and links
-• Due dates (ISO, today, tomorrow, next monday, in 3 days)
-• Times (12h/24h), priorities (p1-p3), reminders, tags
+• Server-side link previews for URLs in memos
+• Share links for public access to individual memos
+• Emoji reactions and comments
+• Configurable feed truncation with date gutter layout
+• Due dates, times, priorities (p1-p3), reminders, tags
 • Group and sort tasks by date, priority, list, or memo
+• Filter tasks by source memo
+• Color-coded task urgency (overdue, today, priority)
 • Android notifications with 4 priority channels
 • Calendar integration for reliable reminders
 • Offline-first with sync queue
@@ -16,4 +21,4 @@ Features:
 • Export/import backup as JSON
 • Share text from any app into a new memo
 
-Requires a running Memos instance (v0.22+). The name comes from the Japanese word 日記 (nikki), meaning diary.
+Requires a running Memos instance (v0.22+, v0.31 recommended). The name comes from the Japanese word 日記 (nikki), meaning diary.

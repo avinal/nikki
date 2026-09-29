@@ -29,16 +29,21 @@ Inspired by the Google Foobar challenge logo, adapted into a circle. A pink circ
 **Memos**
 - Full CRUD with the Memos API (create, edit, pin, archive, delete)
 - Rich markdown rendering: headings, bold/italic, strikethrough, code blocks, tables, links, task checkboxes
+- Server-side link previews for URLs in memos
 - Media attachments with authenticated image loading
 - Emoji reactions and comments
-- Visibility control (private, protected, public)
+- Share links for public access to individual memos
+- Visibility control (private, protected, public, space)
+- Configurable feed truncation with expand/collapse
 - Pull-to-refresh sync with configurable interval
 
 **Tasks**
 - Todoist-inspired syntax parsed from markdown checkboxes (see [TASK_FORMAT.md](TASK_FORMAT.md))
 - Due dates (ISO and natural: today, tomorrow), times (12h/24h), priorities (p1-p3), reminders, tags
 - Group by due date, list, priority, source memo, or status
+- Filter tasks by source memo
 - Sort by due date or priority
+- Color-coded urgency: red edge for overdue, accent for today, priority colors for p1
 - Parser doctor: inline error/warning detection with typo suggestions
 - Android notifications with 4 priority channels (p1 bypasses DND)
 
@@ -56,6 +61,7 @@ Inspired by the Google Foobar challenge logo, adapted into a circle. A pink circ
 **Personalization**
 - 3 themes: dark, light, AMOLED black
 - 20 WP8 accent colors (lime, green, emerald, teal, cyan, cobalt, indigo, violet, pink, magenta, crimson, red, orange, amber, yellow, brown, olive, steel, mauve, taupe)
+- Date gutter on memo cards with adaptive labels
 - Configurable week start day, default visibility, default reminder
 
 **Backup**
@@ -65,7 +71,7 @@ Inspired by the Google Foobar challenge logo, adapted into a circle. A pink circ
 ## Requirements
 
 - Android 8.0+ (API 26)
-- A running [Memos](https://github.com/usememos/memos) instance (v0.22+)
+- A running [Memos](https://github.com/usememos/memos) instance (v0.22+, v0.31 recommended)
 - JDK 11+
 
 ## Building
@@ -82,7 +88,7 @@ cd nikki
 ./gradlew :androidApp:installDebug
 
 # Run tests
-./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:testAndroid
 ```
 
 The project uses Gradle 9.4 with the Kotlin Multiplatform plugin. Android Studio or IntelliJ IDEA with the Compose Multiplatform plugin is recommended for development.

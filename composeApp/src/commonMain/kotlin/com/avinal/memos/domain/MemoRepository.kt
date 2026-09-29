@@ -272,6 +272,18 @@ class MemoRepository(
         }
     }
 
+    suspend fun createShareLink(memoId: String): ApiResult<String> {
+        return when (val result = apiClient.createMemoShare(memoId)) {
+            is ApiResult.Success -> {
+                val token = result.data.name.substringAfterLast("/")
+                val baseUrl = apiClient.baseUrlProvider().trimEnd('/')
+                ApiResult.Success("$baseUrl/memos/shares/$token")
+            }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+        }
+    }
+
     suspend fun deleteMemo(id: String): ApiResult<Unit> {
         return when (val result = apiClient.deleteMemo(id)) {
             is ApiResult.Success -> {

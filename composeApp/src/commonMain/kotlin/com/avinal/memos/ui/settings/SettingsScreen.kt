@@ -224,6 +224,33 @@ fun SettingsScreen(
         }
         Text("how often to fetch from server", fontSize = 12.sp, color = subtleColor)
 
+        val memoPreviewLines by viewModel.memoPreviewLines.collectAsState()
+        SettingToggle(
+            "preview lines",
+            if (memoPreviewLines == 0) "off" else "$memoPreviewLines",
+            accent, subtleColor,
+        ) {
+            val options = listOf(0, 4, 6, 8, 12, 20)
+            val idx = options.indexOf(memoPreviewLines)
+            viewModel.setMemoPreviewLines(options[(idx + 1) % options.size])
+        }
+        Text("lines shown in feed before truncating (0 = full)", fontSize = 12.sp, color = subtleColor)
+
+        val accentGutter by viewModel.accentGutter.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setAccentGutter(!accentGutter) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("accent date gutter", fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                if (accentGutter) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (accentGutter) accent else subtleColor,
+            )
+        }
+        Text("color the date gutter with accent color", fontSize = 12.sp, color = subtleColor)
+
         val autoArchive by viewModel.autoArchiveCompletedTasks.collectAsState()
         Row(
             modifier = Modifier.fillMaxWidth().clickable { viewModel.setAutoArchiveCompletedTasks(!autoArchive) }.padding(vertical = 6.dp),
