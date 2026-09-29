@@ -54,6 +54,9 @@ class SettingsViewModel(
     val autoArchiveCompletedTasks: StateFlow<Boolean> = tokenStore.autoArchiveCompletedTasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val memoPreviewLines: StateFlow<Int> = tokenStore.memoPreviewLines
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8)
+
     init {
         viewModelScope.launch { authRepository.validateToken() }
     }
@@ -92,6 +95,10 @@ class SettingsViewModel(
 
     fun setAutoArchiveCompletedTasks(enabled: Boolean) {
         viewModelScope.launch { tokenStore.saveAutoArchiveCompletedTasks(enabled) }
+    }
+
+    fun setMemoPreviewLines(lines: Int) {
+        viewModelScope.launch { tokenStore.saveMemoPreviewLines(lines) }
     }
 
     fun getExportJson(onResult: (String) -> Unit) {

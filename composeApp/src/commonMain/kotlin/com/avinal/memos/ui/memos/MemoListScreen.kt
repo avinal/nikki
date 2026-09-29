@@ -155,6 +155,7 @@ fun MemoListScreen(
         }
     }
     val serverUrl by produceState("") { value = deps.tokenStore.serverUrl.first() ?: "" }
+    val memoPreviewLines by produceState(8) { deps.tokenStore.memoPreviewLines.collect { value = it } }
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -610,6 +611,7 @@ fun MemoListScreen(
                         memo = memo,
                         onClick = { onMemoClick(memo.id) },
                         serverUrl = serverUrl,
+                        maxPreviewLines = memoPreviewLines,
                         onPin = null,
                         onArchive = null,
                         onDelete = { viewModel.deleteMemo(memo.id) },
@@ -626,6 +628,7 @@ fun MemoListScreen(
                         memo = memo,
                         onClick = { onMemoClick(memo.id) },
                         serverUrl = serverUrl,
+                        maxPreviewLines = memoPreviewLines,
                         onPin = { viewModel.togglePin(memo) },
                         onArchive = { viewModel.archiveMemo(memo.id) },
                         onDelete = { viewModel.deleteMemo(memo.id) },

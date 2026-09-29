@@ -49,8 +49,6 @@ import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
 
-private const val COMPACT_MAX_LINES = 12
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MemoCard(
@@ -58,6 +56,7 @@ fun MemoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     serverUrl: String = "",
+    maxPreviewLines: Int = 0,
     onPin: (() -> Unit)? = null,
     onArchive: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
@@ -71,7 +70,7 @@ fun MemoCard(
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val contentLines = remember(memo.content) { memo.content.lines() }
-    val isLong = contentLines.size > COMPACT_MAX_LINES
+    val isLong = maxPreviewLines > 0 && contentLines.size > maxPreviewLines
     var expanded by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var editContent by remember { mutableStateOf("") }
@@ -165,7 +164,7 @@ fun MemoCard(
                 )
             } else {
                 val displayContent = if (!expanded && isLong) {
-                    contentLines.take(COMPACT_MAX_LINES).joinToString("\n")
+                    contentLines.take(maxPreviewLines).joinToString("\n")
                 } else {
                     memo.content
                 }
