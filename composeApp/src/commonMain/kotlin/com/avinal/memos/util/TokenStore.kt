@@ -24,6 +24,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
     val syncInterval: Flow<Int> = dataStore.data.map { (it[KEY_SYNC_INTERVAL] ?: "5").toIntOrNull() ?: 5 }
     val autoArchiveCompletedTasks: Flow<Boolean> = dataStore.data.map { (it[KEY_AUTO_ARCHIVE_TASKS] ?: "false") == "true" }
     val memoPreviewLines: Flow<Int> = dataStore.data.map { (it[KEY_MEMO_PREVIEW_LINES] ?: "8").toIntOrNull() ?: 8 }
+    val accentGutter: Flow<Boolean> = dataStore.data.map { (it[KEY_ACCENT_GUTTER] ?: "false") == "true" }
 
     suspend fun saveCredentials(serverUrl: String, token: String) {
         dataStore.edit { prefs ->
@@ -72,6 +73,10 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_MEMO_PREVIEW_LINES] = lines.toString() }
     }
 
+    suspend fun saveAccentGutter(enabled: Boolean) {
+        dataStore.edit { it[KEY_ACCENT_GUTTER] = enabled.toString() }
+    }
+
     suspend fun clear() {
         dataStore.edit {
             val theme = it[KEY_THEME]
@@ -114,5 +119,6 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_SYNC_INTERVAL = stringPreferencesKey("sync_interval")
         private val KEY_AUTO_ARCHIVE_TASKS = stringPreferencesKey("auto_archive_completed_tasks")
         private val KEY_MEMO_PREVIEW_LINES = stringPreferencesKey("memo_preview_lines")
+        private val KEY_ACCENT_GUTTER = stringPreferencesKey("accent_gutter")
     }
 }
