@@ -175,6 +175,7 @@ fun MemoCard(
                         modifier = Modifier.fillMaxWidth(),
                         onTaskToggle = onTaskToggle,
                         linkPreviewFetcher = linkPreviewFetcher,
+                        maxLinkPreviews = if (expanded) Int.MAX_VALUE else 1,
                     )
                 }
 
