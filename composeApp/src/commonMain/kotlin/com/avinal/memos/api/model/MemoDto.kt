@@ -9,7 +9,6 @@ data class MemoDto(
     val creator: String = "",
     val createTime: String = "",
     val updateTime: String = "",
-    val displayTime: String = "",
     val content: String = "",
     val state: String = "NORMAL",
     val visibility: String = "PRIVATE",
@@ -47,7 +46,6 @@ data class AttachmentDto(
 data class ReactionDto(
     val name: String = "",
     val creator: String = "",
-    val contentId: String = "",
     val reactionType: String = "",
     val createTime: String = "",
 )

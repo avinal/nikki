@@ -65,7 +65,7 @@ Inspired by the Google Foobar challenge logo, adapted into a circle. A pink circ
 ## Requirements
 
 - Android 8.0+ (API 26)
-- A running [Memos](https://github.com/usememos/memos) instance (v0.22+)
+- A running [Memos](https://github.com/usememos/memos) instance (v0.22+, v0.31 recommended)
 - JDK 11+
 
 ## Building

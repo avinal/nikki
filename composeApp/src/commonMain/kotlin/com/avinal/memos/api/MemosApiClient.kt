@@ -100,7 +100,7 @@ class MemosApiClient(
         httpClient.post(url("/memos/$memoId/reactions")) {
             contentType(ContentType.Application.Json)
             setBody(UpsertReactionRequest(
-                reaction = ReactionDto(reactionType = reactionType, contentId = "memos/$memoId")
+                reaction = ReactionDto(reactionType = reactionType)
             ))
         }.body()
     }
