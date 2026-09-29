@@ -40,6 +40,7 @@ data class TaskFilterState(
     val groupBy: GroupBy = GroupBy.DUE,
     val sortBy: SortBy = SortBy.DUE,
     val quickAddText: String = "",
+    val filterMemoId: String? = null,
 )
 
 data class TaskGroup(
@@ -52,6 +53,7 @@ data class GroupedTasksResult(
     val groups: List<TaskGroup> = emptyList(),
     val availableLists: List<String> = emptyList(),
     val warnings: List<ParseWarning> = emptyList(),
+    val memoSources: Map<String, String> = emptyMap(),
 )
 
 class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel() {
@@ -73,10 +75,13 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GroupedTasksResult())
 
     private fun buildGroups(memos: List<Memo>, filters: TaskFilterState, collapsed: Set<String>): GroupedTasksResult {
-        val allTasks = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
+        val allTasksUnfiltered = memos.flatMap { memo -> TaskParser.extractTasks(memo.id, memo.content, memo.tags) }
         val allWarnings = memos.flatMap { memo -> TaskParser.validateContent(memo.content).map { it.copy(memoId = memo.id) } }
-        val availableLists = allTasks.flatMap { it.lists }.distinct().sorted()
+        val availableLists = allTasksUnfiltered.flatMap { it.lists }.distinct().sorted()
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val memoTitles = memos.associate { it.id to (it.title.ifEmpty { it.content.lines().first().take(40) }) }
+        val memoSources = allTasksUnfiltered.map { it.memoId }.distinct().associateWith { id -> memoTitles[id] ?: id.take(8) }
+        val allTasks = if (filters.filterMemoId != null) allTasksUnfiltered.filter { it.memoId == filters.filterMemoId } else allTasksUnfiltered
 
         val sorter = when (filters.sortBy) {
             SortBy.DUE -> compareBy<Task> { it.dueDate ?: LocalDate(9999, 12, 31) }.thenBy { it.priority ?: 9 }
@@ -102,11 +107,11 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
                 }
 
                 buildList {
-                    if (overdue.isNotEmpty()) add(TaskGroup("Overdue", overdue.sortedWith(sorter)))
-                    if (todayTasks.isNotEmpty()) add(TaskGroup("Today", todayTasks.sortedWith(sorter)))
-                    if (upcoming.isNotEmpty()) add(TaskGroup("Upcoming", upcoming.sortedWith(sorter)))
-                    if (noDate.isNotEmpty()) add(TaskGroup("No Date", noDate.sortedWith(sorter)))
-                    if (completed.isNotEmpty()) add(TaskGroup("Completed", completed.sortedWith(sorter), collapsed = "Completed" in collapsed))
+                    if (overdue.isNotEmpty()) add(TaskGroup("overdue", overdue.sortedWith(sorter)))
+                    if (todayTasks.isNotEmpty()) add(TaskGroup("today", todayTasks.sortedWith(sorter)))
+                    if (upcoming.isNotEmpty()) add(TaskGroup("upcoming", upcoming.sortedWith(sorter)))
+                    if (noDate.isNotEmpty()) add(TaskGroup("no date", noDate.sortedWith(sorter)))
+                    if (completed.isNotEmpty()) add(TaskGroup("completed", completed.sortedWith(sorter), collapsed = "completed" in collapsed))
                 }
             }
 
@@ -116,7 +121,7 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
                 allTasks.forEach { task ->
                     if (task.isCompleted) { completed.add(task); return@forEach }
-                    val listName = task.lists.firstOrNull() ?: "Untagged"
+                    val listName = task.lists.firstOrNull() ?: "untagged"
                     byList.getOrPut(listName) { mutableListOf() }.add(task)
                 }
 
@@ -124,7 +129,7 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
                     byList.entries.sortedBy { it.key }.forEach { (name, tasks) ->
                         add(TaskGroup("#$name", tasks.sortedWith(sorter)))
                     }
-                    if (completed.isNotEmpty()) add(TaskGroup("Completed", completed.sortedWith(sorter), collapsed = "Completed" in collapsed))
+                    if (completed.isNotEmpty()) add(TaskGroup("completed", completed.sortedWith(sorter), collapsed = "completed" in collapsed))
                 }
             }
 
@@ -146,11 +151,11 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
                 }
 
                 buildList {
-                    if (p1.isNotEmpty()) add(TaskGroup("P1 — High", p1.sortedWith(sorter)))
-                    if (p2.isNotEmpty()) add(TaskGroup("P2 — Medium", p2.sortedWith(sorter)))
-                    if (p3.isNotEmpty()) add(TaskGroup("P3 — Low", p3.sortedWith(sorter)))
-                    if (noPriority.isNotEmpty()) add(TaskGroup("No Priority", noPriority.sortedWith(sorter)))
-                    if (completed.isNotEmpty()) add(TaskGroup("Completed", completed.sortedWith(sorter), collapsed = "Completed" in collapsed))
+                    if (p1.isNotEmpty()) add(TaskGroup("p1 high", p1.sortedWith(sorter)))
+                    if (p2.isNotEmpty()) add(TaskGroup("p2 medium", p2.sortedWith(sorter)))
+                    if (p3.isNotEmpty()) add(TaskGroup("p3 low", p3.sortedWith(sorter)))
+                    if (noPriority.isNotEmpty()) add(TaskGroup("no priority", noPriority.sortedWith(sorter)))
+                    if (completed.isNotEmpty()) add(TaskGroup("completed", completed.sortedWith(sorter), collapsed = "completed" in collapsed))
                 }
             }
 
@@ -163,14 +168,12 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
                     byMemo.getOrPut(task.memoId) { mutableListOf() }.add(task)
                 }
 
-                val memoTitles = memos.associate { it.id to (it.title.ifEmpty { it.content.lines().first().take(40) }) }
-
                 buildList {
                     byMemo.entries.forEach { (memoId, tasks) ->
                         val title = memoTitles[memoId] ?: memoId.take(8)
                         add(TaskGroup(title, tasks.sortedWith(sorter)))
                     }
-                    if (completed.isNotEmpty()) add(TaskGroup("Completed", completed.sortedWith(sorter), collapsed = "Completed" in collapsed))
+                    if (completed.isNotEmpty()) add(TaskGroup("completed", completed.sortedWith(sorter), collapsed = "completed" in collapsed))
                 }
             }
 
@@ -179,8 +182,8 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
                 val completed = allTasks.filter { it.isCompleted }.sortedWith(sorter)
 
                 buildList {
-                    if (incomplete.isNotEmpty()) add(TaskGroup("Incomplete", incomplete))
-                    if (completed.isNotEmpty()) add(TaskGroup("Completed", completed, collapsed = "Completed" in collapsed))
+                    if (incomplete.isNotEmpty()) add(TaskGroup("incomplete", incomplete))
+                    if (completed.isNotEmpty()) add(TaskGroup("completed", completed, collapsed = "completed" in collapsed))
                 }
             }
         }
@@ -189,6 +192,7 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
             groups = groups.map { it.copy(collapsed = it.title in collapsed) },
             availableLists = availableLists,
             warnings = allWarnings,
+            memoSources = memoSources,
         )
     }
 
@@ -198,6 +202,10 @@ class TaskListViewModel(private val memoRepository: MemoRepository) : ViewModel(
 
     fun setSortBy(sortBy: SortBy) {
         _filterState.update { it.copy(sortBy = sortBy) }
+    }
+
+    fun setFilterMemo(memoId: String?) {
+        _filterState.update { it.copy(filterMemoId = memoId) }
     }
 
     fun toggleGroupCollapse(title: String) {
