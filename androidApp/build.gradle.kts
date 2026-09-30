@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.avinal.memos"
+        applicationId = "space.avinal.nikki"
         minSdk = 26
         targetSdk = 36
         versionCode = rootProject.extra["gitVersionCode"] as Int
