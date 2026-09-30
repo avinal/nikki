@@ -1,9 +1,9 @@
 Memos v0.31 compatibility and UI improvements.
 
-• Compatible with Memos v0.31 (Spaces visibility, updated reaction and timestamp APIs)
-• Server-side link previews replace client-side HTML fetching
-• Share links for public access to individual memos
-• Configurable memo preview lines in feed (truncate long memos)
-• Redesigned memo cards with date gutter and adaptive labels
-• Task screen: color-coded urgency edges, memo filter, cleaner group labels
-• Link previews limited to 1 per card in feed, all shown in detail view
+• Memos v0.31 support (Spaces visibility, updated APIs)
+• Server-side link previews replace client-side fetching
+• Share links for public access to memos
+• Configurable memo preview lines in feed
+• Redesigned cards with date gutter and adaptive labels
+• Task screen: urgency edge colors, memo filter
+• Feed shows 1 link preview per card, detail shows all
