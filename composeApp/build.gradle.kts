@@ -116,3 +116,8 @@ dependencies {
     add("kspIosSimulatorArm64", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
 }
+
+configurations.all {
+    exclude(group = "io.opentelemetry")
+    exclude(group = "io.opencensus")
+}
