@@ -9,11 +9,5 @@ plugins {
     alias(libs.plugins.room) apply false
 }
 
-fun gitVersionName(): String {
-    return providers.exec {
-        commandLine("git", "describe", "--tags", "--always", "--dirty")
-    }.standardOutput.asText.get().trim().removePrefix("v")
-}
-
-extra["gitVersionName"] = gitVersionName()
+extra["gitVersionName"] = property("VERSION_NAME") as String
 extra["gitVersionCode"] = (property("VERSION_CODE") as String).toInt()
