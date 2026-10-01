@@ -44,9 +44,29 @@ android {
         includeInBundle = false
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/version-control-info.textproto"
+        }
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/*.so"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+afterEvaluate {
+    tasks.configureEach {
+        if (name.contains("ArtProfile", ignoreCase = true) ||
+            name.contains("BaselineProfile", ignoreCase = true)
+        ) {
+            enabled = false
+        }
     }
 }
 
