@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,6 +17,9 @@ import com.avinal.memos.ui.auth.LoginScreen
 import com.avinal.memos.ui.memos.MainScreen
 import com.avinal.memos.ui.memos.MemoDetailScreen
 import com.avinal.memos.ui.memos.MemoEditorScreen
+import com.avinal.memos.ui.onboarding.PermissionsScreen
+import com.avinal.memos.ui.onboarding.WelcomeScreen
+import kotlinx.coroutines.launch
 
 private const val ANIM_DURATION = 300
 
@@ -23,10 +27,18 @@ private const val ANIM_DURATION = 300
 fun AppNavHost(deps: AppDependencies, sharedText: String? = null) {
     val navController = rememberNavController()
     val isLoggedIn by deps.authRepository.isLoggedIn.collectAsState(initial = false)
+    val onboardingComplete by deps.tokenStore.onboardingComplete.collectAsState(initial = true)
+    val scope = rememberCoroutineScope()
+
+    val startDestination = when {
+        isLoggedIn -> Route.Main
+        !onboardingComplete -> Route.Welcome
+        else -> Route.Login
+    }
 
     NavHost(
         navController = navController,
-        startDestination = if (isLoggedIn) Route.Main else Route.Login,
+        startDestination = startDestination,
         enterTransition = {
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(ANIM_DURATION)) + fadeIn(tween(ANIM_DURATION))
         },
@@ -40,17 +52,43 @@ fun AppNavHost(deps: AppDependencies, sharedText: String? = null) {
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(ANIM_DURATION)) + fadeOut(tween(ANIM_DURATION))
         },
     ) {
+        composable<Route.Welcome>(
+            enterTransition = { fadeIn(tween(ANIM_DURATION)) },
+            exitTransition = { fadeOut(tween(ANIM_DURATION)) },
+        ) {
+            WelcomeScreen(
+                onNext = { navController.navigate(Route.Permissions) },
+            )
+        }
+
+        composable<Route.Permissions>(
+            enterTransition = { fadeIn(tween(ANIM_DURATION)) },
+            exitTransition = { fadeOut(tween(ANIM_DURATION)) },
+        ) {
+            PermissionsScreen(
+                onBack = { navController.popBackStack() },
+                onNext = {
+                    navController.navigate(Route.Login)
+                },
+            )
+        }
+
         composable<Route.Login>(
             enterTransition = { fadeIn(tween(ANIM_DURATION)) },
             exitTransition = { fadeOut(tween(ANIM_DURATION)) },
         ) {
+            val canGoBack by navController.currentBackStack.collectAsState()
             LoginScreen(
                 deps = deps,
                 onLoginSuccess = {
+                    scope.launch { deps.tokenStore.setOnboardingComplete() }
                     navController.navigate(Route.Main) {
-                        popUpTo<Route.Login> { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
+                onBack = if (canGoBack.size > 1) {
+                    { navController.popBackStack() }
+                } else null,
             )
         }
 

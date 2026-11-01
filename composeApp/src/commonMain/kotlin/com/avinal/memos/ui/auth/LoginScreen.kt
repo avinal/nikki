@@ -2,12 +2,13 @@ package com.avinal.memos.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,10 +38,13 @@ import com.avinal.memos.ui.theme.LocalAccentColor
 fun LoginScreen(
     deps: AppDependencies,
     onLoginSuccess: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel { LoginViewModel(deps.authRepository) }
     val uiState by viewModel.uiState.collectAsState()
     val accent = LocalAccentColor.current
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) onLoginSuccess()
@@ -51,23 +55,29 @@ fun LoginScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .padding(start = 24.dp, end = 24.dp, top = 48.dp),
+            .navigationBarsPadding()
+            .padding(horizontal = 28.dp),
     ) {
+        Spacer(Modifier.height(48.dp))
+
         Text(
-            text = "sign in",
-            fontSize = 54.sp,
-            fontWeight = FontWeight.Light,
-            color = MaterialTheme.colorScheme.onBackground,
+            "sign in",
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Thin,
+            color = textColor,
+            letterSpacing = (-1).sp,
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(32.dp))
 
         TextField(
             value = uiState.serverUrl,
             onValueChange = viewModel::updateServerUrl,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("server url", fontSize = 13.sp) },
-            placeholder = { Text("memos.example.com", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
+            placeholder = {
+                Text("memos.example.com", fontSize = 15.sp, color = subtleColor.copy(alpha = 0.4f))
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
             textStyle = MaterialTheme.typography.bodyMedium,
@@ -80,14 +90,16 @@ fun LoginScreen(
             ),
         )
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
 
         TextField(
             value = uiState.token,
             onValueChange = viewModel::updateToken,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("access token", fontSize = 13.sp) },
-            placeholder = { Text("memos_pat_...", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
+            placeholder = {
+                Text("memos_pat_...", fontSize = 15.sp, color = subtleColor.copy(alpha = 0.4f))
+            },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -102,28 +114,44 @@ fun LoginScreen(
         )
 
         if (uiState.error != null) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                uiState.error!!,
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.error,
-            )
+            Spacer(Modifier.height(10.dp))
+            Text(uiState.error!!, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.weight(1f))
 
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .background(if (uiState.isLoading) accent.copy(alpha = 0.6f) else accent)
-                .then(if (!uiState.isLoading) Modifier.clickable(onClick = viewModel::login) else Modifier),
-            contentAlignment = Alignment.Center,
+                .padding(bottom = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onBack != null) {
+                Text(
+                    "back",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Light,
+                    color = subtleColor,
+                    modifier = Modifier.clickable { onBack() },
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+
             if (uiState.isLoading) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+                CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
             } else {
-                Text("sign in", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(
+                    "login",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Light,
+                    color = if (uiState.serverUrl.isNotBlank() && uiState.token.isNotBlank()) accent else subtleColor,
+                    modifier = Modifier.then(
+                        if (uiState.serverUrl.isNotBlank() && uiState.token.isNotBlank())
+                            Modifier.clickable { viewModel.login() }
+                        else Modifier,
+                    ),
+                )
             }
         }
     }
