@@ -158,6 +158,7 @@ fun MemoListScreen(
     val serverUrl by produceState("") { value = deps.tokenStore.serverUrl.first() ?: "" }
     val memoPreviewLines by produceState(8) { deps.tokenStore.memoPreviewLines.collect { value = it } }
     val accentGutter by produceState(false) { deps.tokenStore.accentGutter.collect { value = it } }
+    val showLinkPreviewImages by produceState(false) { deps.tokenStore.showLinkPreviewImages.collect { value = it } }
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -650,6 +651,7 @@ fun MemoListScreen(
                             }
                         },
                         linkPreviewFetcher = deps.linkPreviewFetcher,
+                        showLinkPreviewImages = showLinkPreviewImages,
                     )
                 }
             }

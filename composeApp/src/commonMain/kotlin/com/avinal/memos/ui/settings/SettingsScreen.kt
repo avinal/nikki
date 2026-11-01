@@ -248,6 +248,21 @@ fun SettingsScreen(
         }
         Text("color the date gutter with accent color", fontSize = 12.sp, color = subtleColor)
 
+        val showLinkImages by viewModel.showLinkPreviewImages.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setShowLinkPreviewImages(!showLinkImages) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("link preview images", fontSize = 15.sp, color = textColor)
+            Text(
+                if (showLinkImages) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (showLinkImages) accent else subtleColor,
+            )
+        }
+        Text("load images from linked pages (connects to third-party sites)", fontSize = 12.sp, color = subtleColor)
+
         val autoArchive by viewModel.autoArchiveCompletedTasks.collectAsState()
         Row(
             modifier = Modifier.fillMaxWidth().clickable { viewModel.setAutoArchiveCompletedTasks(!autoArchive) }.padding(vertical = 6.dp),

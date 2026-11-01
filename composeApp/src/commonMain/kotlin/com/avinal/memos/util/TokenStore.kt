@@ -26,6 +26,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
     val memoPreviewLines: Flow<Int> = dataStore.data.map { (it[KEY_MEMO_PREVIEW_LINES] ?: "8").toIntOrNull() ?: 8 }
     val accentGutter: Flow<Boolean> = dataStore.data.map { (it[KEY_ACCENT_GUTTER] ?: "false") == "true" }
     val onboardingComplete: Flow<Boolean> = dataStore.data.map { (it[KEY_ONBOARDING_COMPLETE] ?: "false") == "true" }
+    val showLinkPreviewImages: Flow<Boolean> = dataStore.data.map { (it[KEY_LINK_PREVIEW_IMAGES] ?: "false") == "true" }
 
     suspend fun saveCredentials(serverUrl: String, token: String) {
         dataStore.edit { prefs ->
@@ -82,6 +83,10 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_ONBOARDING_COMPLETE] = "true" }
     }
 
+    suspend fun saveShowLinkPreviewImages(show: Boolean) {
+        dataStore.edit { it[KEY_LINK_PREVIEW_IMAGES] = show.toString() }
+    }
+
     suspend fun clear() {
         dataStore.edit {
             val theme = it[KEY_THEME]
@@ -126,5 +131,6 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         private val KEY_MEMO_PREVIEW_LINES = stringPreferencesKey("memo_preview_lines")
         private val KEY_ACCENT_GUTTER = stringPreferencesKey("accent_gutter")
         private val KEY_ONBOARDING_COMPLETE = stringPreferencesKey("onboarding_complete")
+        private val KEY_LINK_PREVIEW_IMAGES = stringPreferencesKey("link_preview_images")
     }
 }

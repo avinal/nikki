@@ -138,10 +138,12 @@ fun MemoDetailScreen(
 
                     Spacer(Modifier.height(10.dp))
 
+                    val showLinkImages by deps.tokenStore.showLinkPreviewImages.collectAsState(initial = false)
                     MarkdownText(
                         markdown = memo!!.content,
                         onTaskToggle = { lineIndex, checked -> viewModel.toggleTask(lineIndex, checked) },
                         linkPreviewFetcher = deps.linkPreviewFetcher,
+                        showLinkPreviewImages = showLinkImages,
                     )
 
                     if (memo!!.attachments.any { it.isImage } && serverUrl.isNotEmpty()) {
