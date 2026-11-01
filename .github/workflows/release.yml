@@ -20,6 +20,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Extract release notes from CHANGELOG.md
+        id: changelog
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${VERSION}"
+          fi
+          echo "$NOTES" > /tmp/release_notes.md
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -47,7 +59,7 @@ jobs:
         run: |
           gh release create "${TAG}" \
             --title "${TAG}" \
-            --notes "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/fastlane/metadata/android/en-US/changelogs/default.txt)" \
+            --notes-file /tmp/release_notes.md \
             --verify-tag
           for apk in androidApp/build/outputs/apk/release/*.apk; do
             abi=$(basename "$apk" | sed "s/androidApp-/nikki-${TAG}-/" | sed 's/-release//')
