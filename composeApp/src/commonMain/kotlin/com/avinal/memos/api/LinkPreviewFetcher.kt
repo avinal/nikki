@@ -14,7 +14,7 @@ class LinkPreviewFetcher(
 
     suspend fun fetch(url: String): LinkPreview? {
         cache[url]?.let { return it }
-        if (cache.containsKey(url)) return null
+        if (cache.containsKey(url) && apiClient.baseUrlProvider().isNotEmpty()) return null
 
         val now = currentTimeMs()
         val minTimestamp = now - ttlMs
@@ -22,7 +22,7 @@ class LinkPreviewFetcher(
         dao?.let { d ->
             try {
                 val cached = d.getIfFresh(url, minTimestamp)
-                if (cached != null) {
+                if (cached != null && !cached.title.isNullOrBlank()) {
                     val preview = cached.toDomain()
                     addToMemoryCache(url, preview)
                     return preview
@@ -45,7 +45,13 @@ class LinkPreviewFetcher(
             else -> null
         }
 
-        addToMemoryCache(url, preview)
+        if (preview != null) {
+            addToMemoryCache(url, preview)
+        } else if (apiClient.baseUrlProvider().isEmpty()) {
+            return null  // don't cache when server URL not yet loaded
+        } else {
+            addToMemoryCache(url, null)
+        }
 
         if (preview != null) {
             dao?.let { d ->
