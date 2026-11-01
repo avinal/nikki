@@ -1,0 +1,8 @@
+### Breaking
+- Requires Memos 26.10.0+ — REST API paths changed from `/api/v1/...` to `/api/...`; pre-26.10.0 servers will stop working
+### Added
+- Onboarding flow: welcome, permissions, and sign-in screens with back/next navigation
+- Calendar permission requested during onboarding alongside notifications and battery
+- Link preview image toggle in settings (off by default, avoids third-party connections)
+- Per-ABI APK splits — install only the ~1.85 MB relevant to your device
+### F
