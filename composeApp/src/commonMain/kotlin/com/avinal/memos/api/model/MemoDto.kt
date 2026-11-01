@@ -95,16 +95,6 @@ data class UpdateMemoBody(
     val state: String? = null,
 )
 
-@Serializable
-data class UpdateMemoRequest(
-    val memo: UpdateMemoBody,
-    val updateMask: FieldMask,
-)
-
-@Serializable
-data class FieldMask(
-    val paths: List<String>,
-)
 
 @Serializable
 data class UpsertReactionRequest(

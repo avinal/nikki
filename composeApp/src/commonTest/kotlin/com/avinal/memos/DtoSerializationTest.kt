@@ -1,10 +1,9 @@
 package com.avinal.memos
 
-import com.avinal.memos.api.model.ListMemosResponse
-import com.avinal.memos.api.model.ListCommentsResponse
-import com.avinal.memos.api.model.MemoDto
-import com.avinal.memos.api.model.MemoPropertyDto
 import com.avinal.memos.api.model.AttachmentDto
+import com.avinal.memos.api.model.ListCommentsResponse
+import com.avinal.memos.api.model.ListMemosResponse
+import com.avinal.memos.api.model.MemoDto
 import com.avinal.memos.api.model.ReactionDto
 import com.avinal.memos.api.model.RelationDto
 import com.avinal.memos.api.model.RelationRefDto
