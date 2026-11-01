@@ -19,14 +19,3 @@ fun writeDefaultNotifyTime(context: Context, time: String) {
         .edit().putString("default_notify_time", time).apply()
 }
 
-fun flagCalendarPermissionNeeded(context: Context) {
-    context.getSharedPreferences("nikki_notify", Context.MODE_PRIVATE)
-        .edit().putBoolean("needs_calendar_permission", true).apply()
-}
-
-fun consumeCalendarPermissionFlag(context: Context): Boolean {
-    val prefs = context.getSharedPreferences("nikki_notify", Context.MODE_PRIVATE)
-    val needed = prefs.getBoolean("needs_calendar_permission", false)
-    if (needed) prefs.edit().remove("needs_calendar_permission").apply()
-    return needed
-}

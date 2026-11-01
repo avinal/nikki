@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.work.CoroutineWorker
@@ -46,11 +47,6 @@ class TaskCheckWorker(
 
         if (hasCalendarPermission) {
             CalendarReminderManager.syncTaskReminders(appContext, memos)
-        } else {
-            val hasTasksWithReminders = allTasks.any { !it.isCompleted && (it.reminder != null || it.dueDate != null) }
-            if (hasTasksWithReminders) {
-                flagCalendarPermissionNeeded(appContext)
-            }
         }
 
         return Result.success()

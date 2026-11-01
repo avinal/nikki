@@ -35,10 +35,12 @@ fun PermissionsScreen(onBack: () -> Unit, onNext: () -> Unit) {
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var batteryGranted by remember { mutableStateOf(checkBatteryExemption()) }
+    var calendarGranted by remember { mutableStateOf(checkCalendarPermission()) }
 
     val permissionRequester = rememberPermissionRequester(
         onNotificationResult = { granted -> notificationGranted = granted },
         onBatteryResult = { granted -> batteryGranted = granted },
+        onCalendarResult = { granted -> calendarGranted = granted },
     )
 
     Column(
@@ -99,12 +101,11 @@ fun PermissionsScreen(onBack: () -> Unit, onNext: () -> Unit) {
             name = "calendar",
             reason = "schedule reminders as calendar events for reliability",
             tag = "optional",
-            granted = false,
-            accent = subtleColor,
+            granted = calendarGranted,
+            accent = accent,
             subtleColor = subtleColor,
             textColor = textColor,
-            onGrant = null,
-            grantLabel = "asked when first used",
+            onGrant = { permissionRequester.requestCalendar() },
         )
 
         Spacer(Modifier.weight(1f))

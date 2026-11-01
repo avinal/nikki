@@ -15,16 +15,21 @@ import com.avinal.memos.util.appContext
 actual fun rememberPermissionRequester(
     onNotificationResult: (Boolean) -> Unit,
     onBatteryResult: (Boolean) -> Unit,
+    onCalendarResult: (Boolean) -> Unit,
 ): PermissionRequester {
     val notificationLauncher = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             onNotificationResult(granted)
         }
-    } else {
-        null
+    } else null
+
+    val calendarLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+        onCalendarResult(results[Manifest.permission.READ_CALENDAR] == true)
     }
 
-    return remember(notificationLauncher) {
+    return remember(notificationLauncher, calendarLauncher) {
         object : PermissionRequester {
             override fun requestNotification() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -51,6 +56,12 @@ actual fun rememberPermissionRequester(
                 } catch (_: Exception) {
                     onBatteryResult(false)
                 }
+            }
+
+            override fun requestCalendar() {
+                calendarLauncher.launch(
+                    arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+                )
             }
         }
     }

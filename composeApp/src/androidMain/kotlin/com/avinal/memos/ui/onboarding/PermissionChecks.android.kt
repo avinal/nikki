@@ -20,3 +20,8 @@ actual fun checkBatteryExemption(): Boolean {
     val pm = ctx.getSystemService(android.os.PowerManager::class.java)
     return pm.isIgnoringBatteryOptimizations(ctx.packageName)
 }
+
+actual fun checkCalendarPermission(): Boolean {
+    val ctx = appContext ?: return false
+    return ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+}
