@@ -1,9 +1,9 @@
 package com.avinal.memos
 
+import com.avinal.memos.api.model.AttachmentDto
+import com.avinal.memos.api.model.ListCommentsResponse
 import com.avinal.memos.api.model.ListMemosResponse
 import com.avinal.memos.api.model.MemoDto
-import com.avinal.memos.api.model.MemoPropertyDto
-import com.avinal.memos.api.model.AttachmentDto
 import com.avinal.memos.api.model.ReactionDto
 import com.avinal.memos.api.model.RelationDto
 import com.avinal.memos.api.model.RelationRefDto
@@ -98,5 +98,20 @@ class DtoSerializationTest {
         val str = """{"name":"attachments/a1","filename":"doc.pdf","type":"application/pdf","size":"999999"}"""
         val att = json.decodeFromString(AttachmentDto.serializer(), str)
         assertEquals("999999", att.size)
+    }
+
+    @Test
+    fun deserializeListCommentsResponse() {
+        val str = """{"comments":[{"name":"memos/1","content":"a comment"},{"name":"memos/2","content":"another"}],"nextPageToken":""}"""
+        val response = json.decodeFromString(ListCommentsResponse.serializer(), str)
+        assertEquals(2, response.comments.size)
+        assertEquals("a comment", response.comments[0].content)
+    }
+
+    @Test
+    fun listCommentsResponseEmptyByDefault() {
+        val str = """{}"""
+        val response = json.decodeFromString(ListCommentsResponse.serializer(), str)
+        assertTrue(response.comments.isEmpty())
     }
 }

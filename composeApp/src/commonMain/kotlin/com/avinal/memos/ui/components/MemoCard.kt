@@ -71,6 +71,7 @@ fun MemoCard(
     onRestore: (() -> Unit)? = null,
     onShareLink: (() -> Unit)? = null,
     linkPreviewFetcher: com.avinal.memos.api.LinkPreviewFetcher? = null,
+    showLinkPreviewImages: Boolean = false,
 ) {
     val accent = LocalAccentColor.current
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -224,6 +225,7 @@ fun MemoCard(
                             onTaskToggle = onTaskToggle,
                             linkPreviewFetcher = linkPreviewFetcher,
                             maxLinkPreviews = if (expanded) Int.MAX_VALUE else 1,
+                            showLinkPreviewImages = showLinkPreviewImages,
                         )
                     }
 

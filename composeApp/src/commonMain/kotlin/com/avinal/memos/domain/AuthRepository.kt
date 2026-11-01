@@ -44,7 +44,10 @@ class AuthRepository(
                 _currentUser.value = user
                 ApiResult.Success(user)
             }
-            is ApiResult.Error -> result
+            is ApiResult.Error -> {
+                if (result.code == 401) logout()
+                result
+            }
             is ApiResult.NetworkError -> result
         }
     }

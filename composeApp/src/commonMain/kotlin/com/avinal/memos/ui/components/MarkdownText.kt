@@ -48,6 +48,7 @@ fun MarkdownText(
     onTaskToggle: ((lineIndex: Int, checked: Boolean) -> Unit)? = null,
     linkPreviewFetcher: LinkPreviewFetcher? = null,
     maxLinkPreviews: Int = Int.MAX_VALUE,
+    showLinkPreviewImages: Boolean = false,
 ) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtleColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -145,7 +146,7 @@ fun MarkdownText(
 
             if (linkPreviewFetcher != null && !inCodeBlock && linkPreviewCount < maxLinkPreviews) {
                 urlRegex.find(line)?.value?.let { url ->
-                    LinkPreviewCard(url = url, fetcher = linkPreviewFetcher)
+                    LinkPreviewCard(url = url, fetcher = linkPreviewFetcher, showImage = showLinkPreviewImages)
                     linkPreviewCount++
                 }
             }

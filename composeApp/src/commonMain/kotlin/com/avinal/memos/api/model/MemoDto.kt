@@ -70,6 +70,12 @@ data class ListMemosResponse(
 )
 
 @Serializable
+data class ListCommentsResponse(
+    val comments: List<MemoDto> = emptyList(),
+    val nextPageToken: String = "",
+)
+
+@Serializable
 data class CreateMemoRequest(
     val content: String,
     val visibility: String = "PRIVATE",
@@ -89,16 +95,6 @@ data class UpdateMemoBody(
     val state: String? = null,
 )
 
-@Serializable
-data class UpdateMemoRequest(
-    val memo: UpdateMemoBody,
-    val updateMask: FieldMask,
-)
-
-@Serializable
-data class FieldMask(
-    val paths: List<String>,
-)
 
 @Serializable
 data class UpsertReactionRequest(

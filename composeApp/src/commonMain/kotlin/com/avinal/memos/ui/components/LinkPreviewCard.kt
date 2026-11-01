@@ -34,6 +34,7 @@ fun LinkPreviewCard(
     url: String,
     fetcher: LinkPreviewFetcher?,
     modifier: Modifier = Modifier,
+    showImage: Boolean = false,
 ) {
     if (fetcher == null) return
     var preview by remember(url) { mutableStateOf<LinkPreview?>(null) }
@@ -58,16 +59,18 @@ fun LinkPreviewCard(
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .clickable { uriHandler.openUri(url) },
     ) {
-        p.imageUrl?.let { imageUrl ->
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 200.dp)
-                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
-                contentScale = ContentScale.FillWidth,
-            )
+        if (showImage) {
+            p.imageUrl?.let { imageUrl ->
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
+                    contentScale = ContentScale.FillWidth,
+                )
+            }
         }
         Column(modifier = Modifier.padding(10.dp)) {
             p.siteName?.let {

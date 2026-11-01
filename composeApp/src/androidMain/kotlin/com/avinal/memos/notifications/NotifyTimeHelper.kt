@@ -18,3 +18,4 @@ fun writeDefaultNotifyTime(context: Context, time: String) {
     context.getSharedPreferences("nikki_notify", Context.MODE_PRIVATE)
         .edit().putString("default_notify_time", time).apply()
 }
+

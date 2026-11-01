@@ -8,6 +8,18 @@ A native Android client for [Memos](https://usememos.com) with integrated Todois
 
 The name comes from the Japanese word 日記 (nikki), meaning diary.
 
+## Screenshots
+
+| | |
+|---|---|
+| **welcome** — clean onboarding with logo and version info | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1-nikki-welcome.png" width="200" /> |
+| **permissions** — contextual permission requests before sign-in | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2-nikki-permissions.png" width="200" /> |
+| **sign in** — server URL and access token | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3-nikki-login.png" width="200" /> |
+| **memos** — feed with date gutter, markdown rendering, link previews | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4-nikki-memos-input.png" width="200" /> |
+| **tasks** — parsed from markdown checkboxes, grouped by urgency | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5-nikki-tasks.png" width="200" /> |
+| **explorer** — activity heatmap, tag browser, date and search filters | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6-nikki-explorer.png" width="200" /> |
+| **settings** — themes, accent colors, sync, notifications | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7-nikki-settings.png" width="200" /> |
+
 ## Why Nikki
 
 Memos is a great self-hosted note-taking tool, but its mobile experience is limited to a PWA. Nikki exists to be a proper native client that feels at home on your phone — fast, offline-capable, and opinionated about how notes and tasks should work together.

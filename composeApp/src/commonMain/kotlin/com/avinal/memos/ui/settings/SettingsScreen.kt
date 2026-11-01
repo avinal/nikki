@@ -1,6 +1,5 @@
 package com.avinal.memos.ui.settings
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,11 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalUriHandler
+import com.avinal.memos.ui.components.NikkiLogo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,7 +111,7 @@ fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AppLogo(size = 96f)
+            NikkiLogo(size = 96f)
             Column {
                 Text("nikki", fontSize = 24.sp, fontWeight = FontWeight.Light, color = textColor)
                 Text("v${com.avinal.memos.AppVersion.NAME}", fontSize = 12.sp, color = subtleColor)
@@ -251,6 +248,21 @@ fun SettingsScreen(
         }
         Text("color the date gutter with accent color", fontSize = 12.sp, color = subtleColor)
 
+        val showLinkImages by viewModel.showLinkPreviewImages.collectAsState()
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.setShowLinkPreviewImages(!showLinkImages) }.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("link preview images", fontSize = 15.sp, color = textColor)
+            Text(
+                if (showLinkImages) "on" else "off",
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                color = if (showLinkImages) accent else subtleColor,
+            )
+        }
+        Text("load images from linked pages (connects to third-party sites)", fontSize = 12.sp, color = subtleColor)
+
         val autoArchive by viewModel.autoArchiveCompletedTasks.collectAsState()
         Row(
             modifier = Modifier.fillMaxWidth().clickable { viewModel.setAutoArchiveCompletedTasks(!autoArchive) }.padding(vertical = 6.dp),
@@ -334,52 +346,6 @@ private fun SectionHeader(text: String) {
     )
 }
 
-@Composable
-private fun AppLogo(size: Float) {
-    val pink = Color(0xFFEE67A4)
-    val black = Color(0xFF231F20)
-    val teal = Color(0xFF35BEB8)
-
-    Canvas(modifier = Modifier.size(size.dp)) {
-        val cx = this.size.width / 2f
-        val cy = this.size.height / 2f
-        val scale = this.size.width / 108f
-
-        val rCircle = 28f * scale
-        val rInner = 20f * scale
-        val rOuter = 35f * scale
-        val halfAngle = 23.5f
-
-        drawCircle(pink, radius = rCircle, center = Offset(cx, cy))
-
-        drawAnnularSector(cx, cy, rInner, rCircle, -halfAngle, halfAngle * 2f, black)
-        drawAnnularSector(cx, cy, rCircle, rOuter, -halfAngle, halfAngle * 2f, teal)
-    }
-}
-
-private fun DrawScope.drawAnnularSector(
-    cx: Float, cy: Float,
-    innerR: Float, outerR: Float,
-    startAngle: Float, sweepAngle: Float,
-    color: Color,
-) {
-    val path = Path().apply {
-        arcTo(
-            rect = androidx.compose.ui.geometry.Rect(cx - outerR, cy - outerR, cx + outerR, cy + outerR),
-            startAngleDegrees = startAngle,
-            sweepAngleDegrees = sweepAngle,
-            forceMoveTo = true,
-        )
-        arcTo(
-            rect = androidx.compose.ui.geometry.Rect(cx - innerR, cy - innerR, cx + innerR, cy + innerR),
-            startAngleDegrees = startAngle + sweepAngle,
-            sweepAngleDegrees = -sweepAngle,
-            forceMoveTo = false,
-        )
-        close()
-    }
-    drawPath(path, color)
-}
 
 @Composable
 private fun SettingToggle(label: String, value: String, accent: Color, subtleColor: Color, onClick: () -> Unit) {

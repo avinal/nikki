@@ -22,6 +22,11 @@ class MemoVisibilityTest {
     }
 
     @Test
+    fun fromApiStringSpace() {
+        assertEquals(MemoVisibility.SPACE, MemoVisibility.fromApiString("SPACE"))
+    }
+
+    @Test
     fun fromApiStringUnknownDefaultsToPrivate() {
         assertEquals(MemoVisibility.PRIVATE, MemoVisibility.fromApiString("UNKNOWN"))
     }

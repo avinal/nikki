@@ -1,5 +1,6 @@
 package com.avinal.memos
 
+import com.avinal.memos.ui.components.toGutterParts
 import com.avinal.memos.ui.components.toRelativeString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -79,5 +80,46 @@ class RelativeTimestampTest {
     @Test fun futureTimestampShowsJustNow() {
         val future = now + 5.minutes
         assertEquals("just now", future.toRelativeString(now, tz))
+    }
+}
+
+class GutterTimestampTest {
+
+    private val tz = TimeZone.UTC
+    private val now = Instant.parse("2026-08-26T12:00:00Z")
+
+    @Test fun justNowShowsDot() {
+        val g = (now - 30.seconds).toGutterParts(now, tz)
+        assertEquals("·", g.number)
+        assertEquals("now", g.shortLabel)
+        assertEquals("now", g.longLabel)
+    }
+
+    @Test fun minutesAgoShortAndLong() {
+        val g = (now - 25.minutes).toGutterParts(now, tz)
+        assertEquals("25", g.number)
+        assertEquals("min", g.shortLabel)
+        assertEquals("minutes", g.longLabel)
+    }
+
+    @Test fun hoursAgoShortAndLong() {
+        val g = (now - 3.hours).toGutterParts(now, tz)
+        assertEquals("3", g.number)
+        assertEquals("hr", g.shortLabel)
+        assertEquals("hours", g.longLabel)
+    }
+
+    @Test fun daysOldShowsDayAndMonth() {
+        val g = Instant.parse("2026-08-10T12:00:00Z").toGutterParts(now, tz)
+        assertEquals("10", g.number)
+        assertEquals("aug", g.shortLabel)
+        assertEquals("august", g.longLabel)
+    }
+
+    @Test fun differentMonthShowsCorrectLabel() {
+        val g = Instant.parse("2026-01-15T12:00:00Z").toGutterParts(now, tz)
+        assertEquals("15", g.number)
+        assertEquals("jan", g.shortLabel)
+        assertEquals("january", g.longLabel)
     }
 }

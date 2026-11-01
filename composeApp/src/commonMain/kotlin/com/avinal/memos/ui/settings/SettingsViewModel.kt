@@ -108,6 +108,13 @@ class SettingsViewModel(
         viewModelScope.launch { tokenStore.saveAccentGutter(enabled) }
     }
 
+    val showLinkPreviewImages: StateFlow<Boolean> = tokenStore.showLinkPreviewImages
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setShowLinkPreviewImages(show: Boolean) {
+        viewModelScope.launch { tokenStore.saveShowLinkPreviewImages(show) }
+    }
+
     fun getExportJson(onResult: (String) -> Unit) {
         viewModelScope.launch {
             val memos = memoRepository.observeMemos().first()
