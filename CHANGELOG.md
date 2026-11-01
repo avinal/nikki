@@ -7,18 +7,22 @@ A `### Breaking` section means existing users must take action before or after u
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-01
+
 ### Breaking
 - Requires Memos 26.10.0+ — REST API paths changed from `/api/v1/...` to `/api/...`; pre-26.10.0 servers will stop working
 
 ### Added
-- Onboarding flow: welcome, permissions, and sign-in screens
-- Permissions requested in context instead of at cold launch
-- Calendar permission deferred to first reminder use
+- Onboarding flow: welcome, permissions, and sign-in screens with back/next navigation
+- Calendar permission requested during onboarding alongside notifications and battery
+- Link preview image toggle in settings (off by default, avoids third-party connections)
+- Per-ABI APK splits — install only the ~1.85 MB relevant to your device
 
 ### Fixed
-- API compatibility with Memos 26.10.0 (new path prefix, renamed comments field)
+- API compatibility with Memos 26.10.0 (new path prefix, renamed comments response field)
 - Expired access tokens now trigger re-login instead of silent failure
 - Link preview caching no longer blocks retries when server URL is not yet loaded
+- Calendar sync skipped when permission not granted instead of silently failing
 
 ## [1.4.2] - 2026-10-15
 
