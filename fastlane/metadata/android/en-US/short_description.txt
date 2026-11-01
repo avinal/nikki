@@ -1,1 +1,1 @@
-Native Memos client with Todoist-style tasks and WP Metro design
+Native Memos client with task management and a typography-first design
