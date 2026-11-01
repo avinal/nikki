@@ -8,6 +8,12 @@ A native Android client for [Memos](https://usememos.com) with integrated Todois
 
 The name comes from the Japanese word 日記 (nikki), meaning diary.
 
+## Installation
+
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/space.avinal.nikki/)
+
+Or download the latest APK from [Releases](https://github.com/avinal/nikki/releases).
+
 ## Screenshots
 
 | | |
