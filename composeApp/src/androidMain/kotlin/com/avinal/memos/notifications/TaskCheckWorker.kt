@@ -1,9 +1,12 @@
 package com.avinal.memos.notifications
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.work.CoroutineWorker
@@ -37,7 +40,18 @@ class TaskCheckWorker(
             scheduleAlarm(alarmManager, alarm.taskId, alarm.taskText, alarm.label, alarm.triggerAtMillis, alarm.priority)
         }
 
-        CalendarReminderManager.syncTaskReminders(appContext, memos)
+        val hasCalendarPermission = ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.READ_CALENDAR,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasCalendarPermission) {
+            CalendarReminderManager.syncTaskReminders(appContext, memos)
+        } else {
+            val hasTasksWithReminders = allTasks.any { !it.isCompleted && (it.reminder != null || it.dueDate != null) }
+            if (hasTasksWithReminders) {
+                flagCalendarPermissionNeeded(appContext)
+            }
+        }
 
         return Result.success()
     }
