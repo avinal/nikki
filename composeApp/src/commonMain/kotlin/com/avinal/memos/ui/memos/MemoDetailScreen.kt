@@ -196,7 +196,7 @@ private fun CommentsSection(
         isLoading = true
         when (val result = deps.apiClient.listComments(memoId)) {
             is ApiResult.Success -> {
-                comments = result.data.memos.map { it.toDomain() }
+                comments = result.data.comments.map { it.toDomain() }
                 nextPageToken = result.data.nextPageToken
             }
             else -> {}
@@ -210,7 +210,7 @@ private fun CommentsSection(
         scope.launch {
             when (val result = deps.apiClient.listComments(memoId, pageToken = nextPageToken)) {
                 is ApiResult.Success -> {
-                    comments = comments + result.data.memos.map { it.toDomain() }
+                    comments = comments + result.data.comments.map { it.toDomain() }
                     nextPageToken = result.data.nextPageToken
                 }
                 else -> {}

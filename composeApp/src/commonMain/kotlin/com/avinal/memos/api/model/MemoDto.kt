@@ -70,6 +70,12 @@ data class ListMemosResponse(
 )
 
 @Serializable
+data class ListCommentsResponse(
+    val comments: List<MemoDto> = emptyList(),
+    val nextPageToken: String = "",
+)
+
+@Serializable
 data class CreateMemoRequest(
     val content: String,
     val visibility: String = "PRIVATE",

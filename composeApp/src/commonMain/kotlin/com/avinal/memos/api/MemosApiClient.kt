@@ -6,6 +6,7 @@ import com.avinal.memos.api.model.CreateAttachmentRequest
 import com.avinal.memos.api.model.CreateMemoRequest
 import com.avinal.memos.api.model.CreateMemoShareRequest
 import com.avinal.memos.api.model.LinkMetadataDto
+import com.avinal.memos.api.model.ListCommentsResponse
 import com.avinal.memos.api.model.MemoShareDto
 import com.avinal.memos.api.model.ListMemosResponse
 import com.avinal.memos.api.model.MemoDto
@@ -30,7 +31,7 @@ class MemosApiClient(
     private val httpClient: HttpClient,
     val baseUrlProvider: () -> String,
 ) {
-    private fun url(path: String): String = "${baseUrlProvider().trimEnd('/')}/api/v1$path"
+    private fun url(path: String): String = "${baseUrlProvider().trimEnd('/')}/api$path"
 
     suspend fun getMe(): ApiResult<UserDto> = apiCall {
         httpClient.get(url("/auth/me")).body()
@@ -134,7 +135,7 @@ class MemosApiClient(
         memoId: String,
         pageSize: Int = 20,
         pageToken: String = "",
-    ): ApiResult<ListMemosResponse> = apiCall {
+    ): ApiResult<ListCommentsResponse> = apiCall {
         httpClient.get(url("/memos/$memoId/comments")) {
             parameter("pageSize", pageSize)
             if (pageToken.isNotEmpty()) parameter("pageToken", pageToken)
