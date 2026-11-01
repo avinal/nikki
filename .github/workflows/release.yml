@@ -30,7 +30,15 @@ jobs:
           if [ -z "$NOTES" ]; then
             NOTES="Release ${VERSION}"
           fi
-          echo "$NOTES" > /tmp/release_notes.md
+
+          # Prepend a warning header if breaking changes are present
+          BREAKING=$(echo "$NOTES" | awk '/^### Breaking/{found=1; next} found && /^###/{exit} found{print}' | sed '/^[[:space:]]*$/d')
+          if [ -n "$BREAKING" ]; then
+            printf 'WARNING: This release contains breaking changes. Read the Breaking section below before upgrading.\n\n' > /tmp/release_notes.md
+            echo "$NOTES" >> /tmp/release_notes.md
+          else
+            echo "$NOTES" > /tmp/release_notes.md
+          fi
 
       - uses: actions/setup-java@v4
         with:

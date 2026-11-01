@@ -42,6 +42,15 @@ if [ -z "$NOTES" ]; then
   exit 1
 fi
 
+# Detect breaking changes and warn
+BREAKING=$(echo "$NOTES" | awk '/^### Breaking/{found=1; next} found && /^###/{exit} found{print}' | sed '/^[[:space:]]*$/d')
+if [ -n "$BREAKING" ]; then
+  echo ""
+  echo "WARNING: BREAKING CHANGES in this release:"
+  echo "$BREAKING"
+  echo ""
+fi
+
 # Calculate next version code (current commit count + 1 for the upcoming commit)
 CURRENT_CODE=$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2)
 NEW_CODE=$(( CURRENT_CODE + 1 ))
@@ -69,8 +78,10 @@ printf '%s' "$NOTES" | head -c 490 > "${FDROID_DIR}/${NEW_CODE}.txt"
 echo "Written ${FDROID_DIR}/${NEW_CODE}.txt"
 
 # Commit
+COMMIT_MSG="Release v${VERSION} (${NEW_CODE})"
+[ -n "$BREAKING" ] && COMMIT_MSG="${COMMIT_MSG} [breaking]"
 git add gradle.properties "${FDROID_DIR}/${NEW_CODE}.txt"
-git commit -S -s -m "Release v${VERSION} (${NEW_CODE})"
+git commit -S -s -m "$COMMIT_MSG"
 
 # Tag and push
 git tag -s "v${VERSION}" -m "v${VERSION}"

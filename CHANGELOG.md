@@ -2,7 +2,23 @@
 
 All notable changes to Nikki are documented here.
 
+Sections per release: **Breaking**, Added, Changed, Fixed, Removed.
+A `### Breaking` section means existing users must take action before or after upgrading.
+
 ## [Unreleased]
+
+### Breaking
+- Requires Memos 26.10.0+ — REST API paths changed from `/api/v1/...` to `/api/...`; pre-26.10.0 servers will stop working
+
+### Added
+- Onboarding flow: welcome, permissions, and sign-in screens
+- Permissions requested in context instead of at cold launch
+- Calendar permission deferred to first reminder use
+
+### Fixed
+- API compatibility with Memos 26.10.0 (new path prefix, renamed comments field)
+- Expired access tokens now trigger re-login instead of silent failure
+- Link preview caching no longer blocks retries when server URL is not yet loaded
 
 ## [1.4.2] - 2026-10-15
 
@@ -16,6 +32,9 @@ All notable changes to Nikki are documented here.
 
 ## [1.4.0] - 2026-09-30
 
+### Breaking
+- Application ID changed from `com.avinal.memos` to `space.avinal.nikki` — uninstall the old version before installing this one
+
 ### Added
 - Memos v0.31 support: Spaces visibility, updated reaction and timestamp APIs
 - Server-side link previews replace client-side HTML fetching
@@ -24,9 +43,6 @@ All notable changes to Nikki are documented here.
 - Accent-colored date gutter on memo cards with adaptive labels
 - Task screen: left-edge urgency colors, memo filter dropdown
 - Feed shows one link preview per card, all shown when expanded
-
-### Changed
-- Application ID changed to space.avinal.nikki (reinstall required)
 
 ## [1.3.0] - 2026-07-28
 
